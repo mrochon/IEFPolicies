@@ -1,0 +1,1 @@
+﻿Publish-Module -Path C:\Users\mrochon\source\repos\IefPolicies -NuGetApiKey <secret>
