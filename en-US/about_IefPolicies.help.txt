@@ -1,0 +1,39 @@
+TOPIC
+    about_IefPolicies
+
+SHORT DESCRIPTION
+    Provides functions to intelligently upload and download xml IEF policies used for custom journeys in Azure AD B2C.
+ 
+LONG DESCRIPTION
+    Provides functions to intelligently upload and download xml IEF policies used for
+    custom journeys in Azure AD B2C. The upload function will automatically replace
+    occurrences of 'yourtenantname', 'ProxyIdentityExperienceFrameworkAppId' and 
+    'IdentityExperienceFrameworkAppId' (the latter appear in the extension xml provided by the Starter Policies) 
+    with the appropriate values from the tenant you are logged into. It will also replace any
+    occurrences of '{<string>}' with values of proprties with name <string> in a json
+    file optionally provided to the command. You can also have the upload inject a string into the name of every policy
+    to allow for multiple policy sets in your tenant.
+    The upload will dtermine sequence for uploading the files based on their <BasePolicy> specification.
+    The upload will store the source of files updated as per above in a separate folder. a subsequent call to
+    the upload function will only upload files with timestamps later than those in the separate folder.
+
+    This module exports 2 functions:
+        Import-IEFPolicies
+        Export-IEFPolicies
+     
+    Their usage scenarios can be displayed with:
+    Get-Help Load-IEFPolicies -Examples
+ 
+NOTES
+    Author : Marius Rochon
+    Version : 1.0.0
+ 
+
+[PS] > Connect-AzureAD -tenantId myb2ctenant.onmicrosoft.com
+[PS] > Import-IEFPolicies
+Upload policies from the current work directory using conf.json file for configuration data if it exists.
+ 
+.EXAMPLE
+[PS] > Connect-AzureAD -tenantId myb2ctenant.onmicrosoft.com
+[PS] > Export-IEFPolicies -prefix V10
+Download IEF policies with names starting with 'B2C_1A_V10'
