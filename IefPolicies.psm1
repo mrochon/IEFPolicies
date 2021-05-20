@@ -1,25 +1,27 @@
 ﻿function Import-IEFPolicies {
     <#
     .SYNOPSIS
-    Short description
+    Uploads IEF xml policies to a tenant
     
     .DESCRIPTION
-    Long description
+    Uploads IEF xml policies to a tenant. Modifies the xml source prior to the upload by replacing IEF app symbolic names
+    with actual app Ids from the tenant. Replaces other symbolic paramaters included in the xml with '{}' braces by corresponding
+    values in the conf.json file. Injects a defined prefix into the name of the policy. Modified xml is saved in a separate directory after import.
     
     .PARAMETER sourceDirectory
-    Parameter description
+    Directory with xml policies and (optinaly) conf.json file
     
     .PARAMETER configurationFilePath
-    Parameter description
+    Name of file with configuration values if not conf.json
     
     .PARAMETER updatedSourceDirectory
-    Parameter description
+    Directory updated policies are stored after upload
     
     .PARAMETER prefix
-    Parameter description
+    Parameter to be injected into the name of each policy (e.g. B2C_1A_YOURPREFIXBase)
     
     .PARAMETER generateOnly
-    Parameter description
+    Update xml files and store them in the updatedSourceDirectory but do not upload to the B2C tenant
     
     .EXAMPLE
         PS C:\> Import-IEFPolicies
@@ -27,10 +29,13 @@
         Upload policies from the current work directory using conf.json file for configuration data if it exists.
     
     .NOTES
-    General notes
+    Please use connect-iefpolicies -tenant <tanant Name> before executing this command
     #>
     [CmdletBinding()]
     param(
+        [ValidateNotNullOrEmpty()]
+        [string]$tenantName,
+
         #[Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$sourceDirectory = '.\',
@@ -49,16 +54,9 @@
 
     )
 
-    if ($sourceDirectory.EndsWith('\')) {
-        $sourceDirectory = $sourceDirectory + '*' 
-    } else {
-        if (-Not $sourceDirectory.EndsWith('\*')) { 
-            $sourceDirectory = $sourceDirectory + '\*' 
-        }
-    }
 
     # upload policies whose base id is given
-    function Upload-Children($baseId) {
+    function Import-Children($baseId) {
         foreach($p in $policyList) {
             if ($p.BaseId -eq $baseId) {
                 # Skip unchanged files
@@ -71,16 +69,16 @@
                     if (-not $updatedSourceDirectory.EndsWith("\")) {
                         $updatedSourceDirectory = $updatedSourceDirectory + "\"
                     }
-                    $envUpdatedDir = '{0}{1}' -f $updatedSourceDirectory, $b2c.TenantDomain
+                    $envUpdatedDir = '{0}{1}' -f $updatedSourceDirectory, $b2cDomain
                     if(!(Test-Path -Path $envUpdatedDir)){
                         New-Item -ItemType directory -Path $envUpdatedDir
-                        Write-Host "  Updated source folder created for " + $b2c.TenantDomain
+                        Write-Host "  Updated source folder created for " + $b2cDomain
                     }
                     $outFile = '{0}\{1}' -f $envUpdatedDir, $p.Source
                     if (Test-Path $outFile) {
                         if ($p.LastWrite.Ticks -le (Get-Item $outFile).LastWriteTime.Ticks) {
                             "{0}: is up to date" -f $p.Id
-                            Upload-Children $p.Id
+                            Import-Children $p.Id
                             continue;
                         }
                     }
@@ -91,24 +89,22 @@
                 $xml = [xml] $p.Body
                 $xml.PreserveWhitespace = $true
                 try {
-                    $xml.TrustFrameworkPolicy.TenantObjectId = $b2c.TenantId.ToString()
+                    $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/organization" -Method Get -Headers $headers
+                    $xml.TrustFrameworkPolicy.TenantObjectId = $resp.value[0].Id
                     $policy = $xml.OuterXml
                 } catch {
                     # tenantId not used
                     $policy = $p.Body
-                    #$xmlAtt = $xml.CreateAttribute("TenantObjectId")
-                    #$xmlAtt.Value = $b2c.TenantId.ToString()
-                    #$txt = $xml.TrustFrameworkPolicy.Attributes.Append($xmlAtt)
                 }
                 $policy = $policy -replace "yourtenant", $b2cName 
-                $policy = $policy -replace "ProxyIdentityExperienceFrameworkAppId", $iefProxy.AppId
-                $policy = $policy -replace "IdentityExperienceFrameworkAppId", $iefRes.AppId
+                $policy = $policy -replace "ProxyIdentityExperienceFrameworkAppId", $iefProxy.appId
+                $policy = $policy -replace "IdentityExperienceFrameworkAppId", $iefRes.appId
                 $policy = $policy.Replace('PolicyId="B2C_1A_', 'PolicyId="B2C_1A_{0}' -f $prefix)
                 $policy = $policy.Replace('/B2C_1A_', '/B2C_1A_{0}' -f $prefix)
                 $policy = $policy.Replace('<PolicyId>B2C_1A_', '<PolicyId>B2C_1A_{0}' -f $prefix)
 
                 # replace other placeholders, e.g. {MyRest} with http://restfunc.com. Note replacement string must be in {}
-                if ($conf -ne $null) {
+                if ($null -ne $conf) {
                     $special = @('IdentityExperienceFrameworkAppId', 'ProxyIdentityExperienceFrameworkAppId', 'PolicyPrefix')
                     foreach($memb in Get-Member -InputObject $conf -MemberType NoteProperty) {
                         if ($memb.MemberType -eq 'NoteProperty') {
@@ -122,19 +118,21 @@
                 $policyId = $p.Id.Replace('_1A_', '_1A_{0}' -f $prefix)
                 $isOK = $true
                 if (-not $generateOnly) {
-                $exists = $true
+                    $exists = $true
                     try {
-                        $curr = Get-AzureADMSTrustFrameworkPolicy -Id $policyId
+                        Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}" -f $policyId) -Method Get -Headers $headers| Out-Null
                     } catch {
                         $exists = $false
                     }
                     try {
                         if ($exists) {
                             "Replacing"
-                            Set-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) -Id $policyId | Out-Null
+                            Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Put -Headers $headersXml -Body $policy| Out-Null 
+                            #Set-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) -Id $policyId | Out-Null
                         } else {
                             "New journey"
-                            New-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) | Out-Null
+                            Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Post -Headers $headersXml -Body $policy | Out-Null                           
+                            #New-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) | Out-Null
                         }
                     } catch {
                         $isOk = $false
@@ -148,18 +146,45 @@
 
                 if ($isOK) {
                     out-file -FilePath $outFile -inputobject $policy
-                    Upload-Children $p.Id
+                    Import-Children $p.Id
                 }
             }
         }
     }
 
-    # get current tenant data
-    $b2c = Get-AzureADCurrentSessionInfo -ErrorAction stop
-    $b2cName = $b2c.TenantDomain.Split('.')[0]
+        if ($sourceDirectory.EndsWith('\')) {
+        $sourceDirectory = $sourceDirectory + '*' 
+    } else {
+        if (-Not $sourceDirectory.EndsWith('\*')) { 
+            $sourceDirectory = $sourceDirectory + '\*' 
+        }
+    }
+
+    if($null -eq $tokens) {
+        "Please use Connect-IefPolicies -tenant <name> to login first"
+        Exit
+    }
+
+    $headers = @{
+        'Content-Type' = 'application/json';
+        'Authorization' = ("Bearer {0}" -f $tokens.access_token);
+    }
+    $headersXml = @{
+    'Content-Type' = 'application/xml';
+    'Authorization' = ("Bearer {0}" -f $tokens.access_token);
+    }
+    $domains = Invoke-RestMethod -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
+    $b2cDomain = $domains.value[0].id
+    $b2cName = $b2cDomain.Split('.')[0]
     
-    $iefRes = Get-AzureADApplication -Filter "DisplayName eq 'IdentityExperienceFramework'"
-    $iefProxy = Get-AzureADApplication -Filter "DisplayName eq 'ProxyIdentityExperienceFramework'"
+    try {
+        $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/applications?$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
+        $iefRes = $resp.value[0]
+        $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/applications?$filter=startsWith(displayName,'ProxyIdentityExperienceFramework')" -Method Get -Headers $headers
+        $iefProxy = $resp.value[0]
+    } catch {
+        "Please ensure your B2C tenant is setup for using IEF (https://aka.ms/b2csetup)"
+    }
 
     # load originals
     $files = Get-Childitem -Path $sourceDirectory -Include *.xml
@@ -182,83 +207,24 @@
     }
 
     # now start the upload process making sure you start with the base (base id == null)
-    Upload-Children($null)
+    Import-Children($null)
+
 }
 
-# Creates a json object with typical settings needed by
-# the Upload-IEFPolicies function.
-function Get-IEFSettings {
-    [CmdletBinding()]
-    param(
-        [ValidateNotNullOrEmpty()]
-        [string]$policyPrefix
-    )
-
-    $iefAppName = "IdentityExperienceFramework"
-    if(!($iefApp = Get-AzureADApplication -Filter "DisplayName eq '$($iefAppName)'"  -ErrorAction SilentlyContinue))
-    {
-        throw "Not found " + $iefAppName
-    } else {
-        if ($iefApp.PublicClient) {
-            Write-Error "IdentityExperienceFramework must be defined as a confidential client (web app)"
-        }
-    }
-
-    $iefProxyAppName = "ProxyIdentityExperienceFramework"
-    if(!($iefProxyApp = Get-AzureADApplication -Filter "DisplayName eq '$($iefProxyAppName)'"  -ErrorAction SilentlyContinue))
-    {
-        throw "Not found " + $iefProxyAppName
-    } else {
-        if (-not $iefProxyApp.PublicClient) {
-            Write-Error "ProxyIdentityExperienceFramework must be defined as a public client"
-        }
-        $iefOK = $signInOk = $False
-        foreach($r in $iefProxyApp.RequiredResourceAccess) {
-            if ($r.ResourceAppId -eq $iefApp.AppId) { $iefOk = $true }
-            if ($r.ResourceAppId -eq '00000002-0000-0000-c000-000000000000') { $signInOk = $true }
-        }
-        if ((-not $iefOK) -or (-not $signInOk)) {
-            Write-Error 'ProxyIdentityExperienceFramework is not permissioned to use the IdentityExperienceFramework app (it must be consented as well)'
-        } 
-    }
-
-    $envs = @()
-    $envs += @{ 
-        IdentityExperienceFrameworkAppId = $iefApp.AppId;
-        ProxyIdentityExperienceFrameworkAppId = $iefProxyApp.AppId;
-        PolicyPrefix = $policyPrefix  }
-    $envs | ConvertTo-Json
-
-    <#
-     # 
-    $iefAppName = "IdentityExperienceFramework"
-    if(!($iefApp = Get-AzureADApplication -Filter "DisplayName eq '$($iefAppName)'"  -ErrorAction SilentlyContinue))
-    {
-        Write-Host "Creating " $iefAppName
-        $myApp = New-AzureADApplication -DisplayName $iefAppName   
-    }
-    $iefProxyAppName = "ProxyIdentityExperienceFramework"
-    if(!($iefProxyApp = Get-AzureADApplication -Filter "DisplayName eq '$($iefProxyAppName)'"  -ErrorAction SilentlyContinue))
-    {
-        Write-Host "Creating " $iefAppName
-        $myApp = New-AzureADApplication -DisplayName $iefAppName   
-    }
-    #>
-}
 
 function Export-IEFPolicies {
 <#
     .SYNOPSIS
-    Short description
+    Downloads IEF xml policy files from a B2C tenant
 
     .DESCRIPTION
-    Long description
+    Downloads IEF xml policy files from a B2C tenant optionally selecting only files with specified prefix in their name
 
     .PARAMETER prefix
-    Parameter description
+    Used to select only certain files for doanload, prefix="V1" will download all IEF files with names starting with "B2C_1A_V1"
 
     .PARAMETER destinationPath
-    Parameter description
+    Directory where files should be downloaded to
 
     .EXAMPLE
         PS C:\> Export-IEFPolicies -prefix V10
@@ -266,7 +232,7 @@ function Export-IEFPolicies {
         Download IEF policies with names starting with 'B2C_1A_V10'
 
     .NOTES
-    General notes
+    Please use connect-iefpolicies -tenant <tanant Name> before executing this command
 #>
     [CmdletBinding()]
     param(
@@ -278,18 +244,88 @@ function Export-IEFPolicies {
         [ValidateNotNullOrEmpty()]
         [string]$destinationPath
     )
+    if($null -eq $tokens) {
+        "Please use Connect-IefPolicies -tenant <name> to login first"
+        Exit
+    }
+
+    $headers = @{
+        'Content-Type' = 'application/json';
+        'Authorization' = ("Bearer {0}" -f $tokens.access_token);
+    }
+    $headersXml = @{
+    'Content-Type' = 'application/xml';
+    'Authorization' = ("Bearer {0}" -f $tokens.access_token);
+    }
     if ([string]::IsNullOrEmpty($desinationPath)) {
         $destinationPath = ".\"
     }
-    $null = Get-AzureADCurrentSessionInfo -ErrorAction Stop
 
     if (-Not $destinationPath.EndsWith('\')) {
         $destinationPath = $destinationPath + '\' 
     }
 
     $prefix = "B2C_1A_" + $prefix
-    foreach($policy in Get-AzureADMSTrustFrameworkPolicy | Where-Object {($_.Id).startsWith($prefix)}) {
+    $policies = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/trustFramework/policies/" -Method Get -Headers $headers
+    foreach($policy in $policies.value | Where-Object {($_.id).startsWith($prefix)}) {
         $fileName = "{0}\{1}.xml" -f $destinationPath, $policy.Id
-        Get-AzureADMSTrustFrameworkPolicy -Id $policy.Id >> $fileName
+        $policyXml = Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policy.id) -Method Get -Headers $headersXml
+        $policyXml >> $fileName
+        #Get-AzureADMSTrustFrameworkPolicy -Id $policy.Id >> $fileName
+    }  
+}
+
+function Connect-IEFPolicies {
+<#
+    .SYNOPSIS
+    Gets OAuth2 tokens needed to manage IEF Policies
+
+    .DESCRIPTION
+    Gets OAuth2 tokens needed to manage IEF Policies
+
+    .PARAMETER tenant
+    Tenant name, e.g. mytenant. .onmicrosoft.com is not needed.
+
+    .EXAMPLE
+        PS C:\> Connect-IEFPolicies -tenant abctenant
+
+        Authorize to tenant abctenant.onmicrosoft.cvom
+
+    .NOTES
+    Nones
+#>
+    [CmdletBinding()]
+    param(
+        #[Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$tenant
+    )
+    if ($tenant.EndsWith(".onmicrosoft.com")) {
+        $tenanName = $tenant
+    } else {
+        $tenantName = "{0}.onmicrosoft.com" -f $tenant
+    }
+    $hdrs = @{
+        'Content-Type' = "application/x-www-form-urlencoded"
+    }
+    $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/devicecode" -f $tenantName
+    $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework Application.Read.All Directory.Read.All offline_access"
+    $resp = Invoke-Webrequest -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
+    $codeResp = $resp.Content | ConvertFrom-Json
+    $codeResp.message
+    Start-Process "chrome.exe" $codeResp.verification_uri
+    for($iter = 1; $iter -le ($codeResp.expires_in / $codeResp.interval); $iter++) {
+        Start-Sleep -Seconds $codeResp.interval
+        try {
+            $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $tenantName
+            $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=device_code&device_code={0}" -f $codeResp.device_code
+            $resp = Invoke-Webrequest -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
+            $global:tokens = $resp.Content | ConvertFrom-Json
+            "Authorization completed"
+            #return $tokens
+            break
+        } catch {
+            "Waiting..."
+        }
     }
 }

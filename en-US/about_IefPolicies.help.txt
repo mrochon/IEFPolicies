@@ -18,6 +18,7 @@ LONG DESCRIPTION
     the upload function will only upload files with timestamps later than those in the separate folder.
 
     This module exports 2 functions:
+        Connect-IefPolicies
         Import-IEFPolicies
         Export-IEFPolicies
      
@@ -26,14 +27,14 @@ LONG DESCRIPTION
  
 NOTES
     Author : Marius Rochon
-    Version : 1.0.0
+    Version : 2.0.0
  
 
-[PS] > Connect-AzureAD -tenantId myb2ctenant.onmicrosoft.com
+[PS] > Connect-IefPolicies -tenant myb2ctenant  #(.onmicrosoft.com is not necessary)
 [PS] > Import-IEFPolicies
-Upload policies from the current work directory using conf.json file for configuration data if it exists.
+Upload policies from the current work directory using conf.json file for configuration data, if it exists.
  
 .EXAMPLE
-[PS] > Connect-AzureAD -tenantId myb2ctenant.onmicrosoft.com
+[PS] > Connect-IefPolicies -tenant myb2ctenant
 [PS] > Export-IEFPolicies -prefix V10
 Download IEF policies with names starting with 'B2C_1A_V10'

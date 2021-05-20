@@ -38,9 +38,9 @@ Use *Import-IEFPolicies* function to upload your IEF policies to the B2C tenant 
 E.g.
 
 ```PowerShell
-Connect-AzureAD -TenantId yourtenant.onmicrosoft.com
+Connect-IefPolicies -Tenant yourtenant.onmicrosoft.com
 cd 'c:\your directory with the IEF policies'
-Upload-IEFPolicies 
+Import-IEFPolicies 
 ```
 
 Parameters:
@@ -61,7 +61,7 @@ E.g.
 
 ```PowerShell
 $dest = 'C:\LocalAccounts\policies'
-Connect-AzureAD -TenantId yourtenant.onmicrosoft.com
+Connect-IefPolicies -Tenant yourtenant.onmicrosoft.com
 Export-IEFPolicies  -destinationPath $dest  `
 ```
 
