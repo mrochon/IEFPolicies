@@ -131,7 +131,7 @@
                             #Set-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) -Id $policyId | Out-Null
                         } else {
                             "New journey"
-                            Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Post -Headers $headersXml -Body $policy | Out-Null                           
+                            Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/trustFramework/policies" -Method Post -Headers $headersXml -Body $policy | Out-Null                           
                             #New-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) | Out-Null
                         }
                     } catch {
@@ -152,7 +152,7 @@
         }
     }
 
-        if ($sourceDirectory.EndsWith('\')) {
+    if ($sourceDirectory.EndsWith('\')) {
         $sourceDirectory = $sourceDirectory + '*' 
     } else {
         if (-Not $sourceDirectory.EndsWith('\*')) { 
@@ -198,17 +198,13 @@
     foreach($p in $policyList) {
         "Id: {0}; Base:{1}" -f $p.Id, $p.BaseId
     }
-
-    if (-not ([string]::IsNullOrEmpty($configurationFilePath))) {
-        $conf = Get-Content -Path $configurationFilePath -ErrorAction Continue | Out-String | ConvertFrom-Json
+    if(Test-Path $configurationFilePath){
+        $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
         if ([string]::IsNullOrEmpty($prefix)){ $prefix = $conf.Prefix }
-    } else {
-        $conf = $null
     }
 
     # now start the upload process making sure you start with the base (base id == null)
     Import-Children($null)
-
 }
 
 
@@ -326,6 +322,77 @@ function Connect-IEFPolicies {
             break
         } catch {
             "Waiting..."
+        }
+    }
+}
+
+    # based on https://gist.github.com/chrisbrownie/f20cb4508975fb7fb5da145d3d38024a
+function New-IEFPolicies {
+<#
+    .SYNOPSIS
+    Download a starter pack for B2C StarterPack Git repo
+
+    .DESCRIPTION
+    Download a starter pack for B2C StarterPack Git repo. Uses the Display Control version of the repo.
+
+    .PARAMETER destinationPath
+    Directory to download the files to. Default is current directory.
+
+    .EXAMPLE
+        PS C:\> New-IEFPolicies -destinationPath "c:\myPolicies"
+    .NOTES
+        None
+#>
+[CmdletBinding()]
+param(
+    #[Parameter(Mandatory)]
+    [ValidateNotNullOrEmpty()]
+    [string]$destinationPath
+)
+    $owner = "Azure-Samples"
+    $repository = "active-directory-b2c-custom-policy-starterpack"
+    if ([string]::IsNullOrEmpty($destinationPath)) {
+        $destinationPath = "."
+    }
+    $path = $null
+    while($null -eq $path) {
+        $p = (Read-Host -Prompt "Package type: `n[L]ocal accounts only, `n[S] Social/federated only, `n[SL]ocal and social/federated, `n[M]FA social/federated and local with MFA? `n[Q]uit").ToUpper()
+        switch($p) {
+            "L" { $path = "Display%20Controls%20Starterpack/LocalAccounts" }
+            "S" { $path = "Display%20Controls%20Starterpack/SocialAccounts" }
+            "SL" { $path = "Display%20Controls%20StarterpackSocialAndLocalAccounts" }
+            "M" { $path = "Display%20Controls%20StarterpackSocialAndLocalAccountsWithMFA" }
+            "Q" { Exit }
+        }
+    }
+
+    $url = "https://api.github.com/repos/{0}/{1}/contents/{2}" -f $owner, $repository, $path
+    $wr = Invoke-WebRequest -Uri $url
+    $objects = $wr.Content | ConvertFrom-Json
+    $files = $objects | Where-Object {$_.type -eq "file"} | Select-Object -exp download_url
+    $directories = $objects | Where-Object {$_.type -eq "dir"}
+    
+    $directories | ForEach-Object { 
+        DownloadFilesFromRepo -Owner $Owner -Repository $Repository -Path $_.path -DestinationPath $($DestinationPath+$_.name)
+    }
+
+    
+    if (-not (Test-Path $destinationPath)) {
+        # Destination path does not exist, let's create it
+        try {
+            New-Item -Path $destinationPath -ItemType Directory -ErrorAction Stop
+        } catch {
+            throw "Could not create path '$destinationPath'!"
+        }
+    }
+
+    foreach ($file in $files) {
+        $fileDestination = Join-Path $destinationPath (Split-Path $file -Leaf)
+        try {
+            Invoke-WebRequest -Uri $file -OutFile $fileDestination -ErrorAction Stop -Verbose
+            "Downloaded '$($file)' to '$fileDestination'"
+        } catch {
+            throw "Unable to download '$($file.path)'"
         }
     }
 }
