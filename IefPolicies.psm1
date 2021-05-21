@@ -178,9 +178,9 @@
     $b2cName = $b2cDomain.Split('.')[0]
     
     try {
-        $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/applications?$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
+        $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
         $iefRes = $resp.value[0]
-        $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/applications?$filter=startsWith(displayName,'ProxyIdentityExperienceFramework')" -Method Get -Headers $headers
+        $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'ProxyIdentityExperienceFramework')" -Method Get -Headers $headers
         $iefProxy = $resp.value[0]
     } catch {
         "Please ensure your B2C tenant is setup for using IEF (https://aka.ms/b2csetup)"
