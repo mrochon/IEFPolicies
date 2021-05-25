@@ -364,7 +364,7 @@ function New-IEFPolicies {
     Download a starter pack for B2C StarterPack Git repo
 
     .DESCRIPTION
-    Download a starter pack for B2C StarterPack Git repo. Uses the Display Control version of the repo.
+    Download a starter pack for B2C StarterPack Git repo. 
 
     .PARAMETER destinationPath
     Directory to download the files to. Default is current directory.
@@ -389,10 +389,10 @@ param(
     while($null -eq $path) {
         $p = (Read-Host -Prompt "Package type: `n[L]ocal accounts only, `n[S] Social/federated only, `n[SL]ocal and social/federated, `n[M]FA social/federated and local with MFA? `n[Q]uit").ToUpper()
         switch($p) {
-            "L" { $path = "Display%20Controls%20Starterpack/LocalAccounts" }
-            "S" { $path = "Display%20Controls%20Starterpack/SocialAccounts" }
-            "SL" { $path = "Display%20Controls%20Starterpack/SocialAndLocalAccounts" }
-            "M" { $path = "Display%20Controls%20Starterpack/SocialAndLocalAccountsWithMfa" }
+            "L" { $path = "LocalAccounts" }
+            "S" { $path = "SocialAccounts" }
+            "SL" { $path = "SocialAndLocalAccounts" }
+            "M" { $path = "SocialAndLocalAccountsWithMfa" }
             "Q" { Exit }
         }
     }
