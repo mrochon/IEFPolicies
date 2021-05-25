@@ -429,12 +429,13 @@ param(
         }
     }
     if ($count -gt 0) {
-        $destinationPath = "c:\temp"
+        $destinationPath = '.'
+        $fileDestination = Join-Path $destinationPath 'conf.json'
         $conf = @{
             Prefix = "V1" 
             SomeProperty = "Use {SomeProperty} in your xml to have it replaced by this value"
         }
-        $conf | ConvertTo-Json | Out-File -FilePath ("{0}\conf.json" -f $destinationPath)
+        $conf | ConvertTo-Json | Out-File -FilePath $fileDestination
     }
 }
 
