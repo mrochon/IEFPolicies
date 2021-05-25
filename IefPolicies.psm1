@@ -162,8 +162,9 @@
 
     if($null -eq $tokens) {
         "Please use Connect-IefPolicies -tenant <name> to login first"
-        Exit
+        return
     }
+    Refresh_token
 
     $headers = @{
         'Content-Type' = 'application/json';
@@ -242,8 +243,10 @@ function Export-IEFPolicies {
     )
     if($null -eq $tokens) {
         "Please use Connect-IefPolicies -tenant <name> to login first"
-        Exit
+        return
     }
+
+    Refresh_token
 
     $headers = @{
         'Content-Type' = 'application/json';
@@ -296,10 +299,14 @@ function Connect-IEFPolicies {
         [ValidateNotNullOrEmpty()]
         [string]$tenant
     )
-    if ($tenant.EndsWith(".onmicrosoft.com")) {
-        $tenanName = $tenant
+    if ([string]::IsNullOrEmpty($tenant)) {
+        $tenantName = "organizations"
     } else {
-        $tenantName = "{0}.onmicrosoft.com" -f $tenant
+         if ($tenant.EndsWith(".onmicrosoft.com")) {
+            $tenantName = $tenant
+        } else {
+            $tenantName = "{0}.onmicrosoft.com" -f $tenant
+        }
     }
     $hdrs = @{
         'Content-Type' = "application/x-www-form-urlencoded"
@@ -309,7 +316,10 @@ function Connect-IEFPolicies {
     $resp = Invoke-Webrequest -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
     $codeResp = $resp.Content | ConvertFrom-Json
     $codeResp.message
-    Start-Process "chrome.exe" $codeResp.verification_uri
+    #if(-not (Get-Host).Name.StartsWith('Visual Studio Code Host')) {
+    if(-not $env:TERM_PROGRAM -eq 'vscode') {        
+        Start-Process "chrome.exe" $codeResp.verification_uri
+    }
     for($iter = 1; $iter -le ($codeResp.expires_in / $codeResp.interval); $iter++) {
         Start-Sleep -Seconds $codeResp.interval
         try {
@@ -317,8 +327,29 @@ function Connect-IEFPolicies {
             $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=device_code&device_code={0}" -f $codeResp.device_code
             $resp = Invoke-Webrequest -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
             $global:tokens = $resp.Content | ConvertFrom-Json
+            $global:token_expiry = (Get-Date).AddSeconds($global:tokens.expires_in)
             "Authorization completed"
-            #return $tokens
+            $headers = @{
+                'Content-Type' = 'application/json';
+                'Authorization' = ("Bearer {0}" -f $tokens.access_token);
+            }
+            $domains = Invoke-RestMethod -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
+            $b2cDomain = $domains.value[0].id
+            $b2cName = $b2cDomain.Split('.')[0] 
+            "Logged in to {0} tenant." -f $b2cName   
+            try {
+                $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
+                $iefRes = $resp.value[0]
+                $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'ProxyIdentityExperienceFramework')" -Method Get -Headers $headers
+                $iefProxy = $resp.value[0]
+                if ($null -eq $iefRes -or
+                    $null -eq $iefProxy) {
+                    throw
+                }
+            } catch {
+                Write-Host -foreground Red "Your tenant is NOT setup for using IEF. Please visit https://aka.ms/b2csetup to set it up"
+                $global:tokens = $null
+            }                  
             break
         } catch {
             "Waiting..."
@@ -360,8 +391,8 @@ param(
         switch($p) {
             "L" { $path = "Display%20Controls%20Starterpack/LocalAccounts" }
             "S" { $path = "Display%20Controls%20Starterpack/SocialAccounts" }
-            "SL" { $path = "Display%20Controls%20StarterpackSocialAndLocalAccounts" }
-            "M" { $path = "Display%20Controls%20StarterpackSocialAndLocalAccountsWithMFA" }
+            "SL" { $path = "Display%20Controls%20Starterpack/SocialAndLocalAccounts" }
+            "M" { $path = "Display%20Controls%20Starterpack/SocialAndLocalAccountsWithMfa" }
             "Q" { Exit }
         }
     }
@@ -386,13 +417,107 @@ param(
         }
     }
 
+    $count = 0
     foreach ($file in $files) {
         $fileDestination = Join-Path $destinationPath (Split-Path $file -Leaf)
         try {
             Invoke-WebRequest -Uri $file -OutFile $fileDestination -ErrorAction Stop -Verbose
             "Downloaded '$($file)' to '$fileDestination'"
+            ++$count
         } catch {
             throw "Unable to download '$($file.path)'"
         }
+    }
+    if ($count -gt 0) {
+        $destinationPath = "c:\temp"
+        $conf = @{
+            Prefix = "V1" 
+            SomeProperty = "Use {SomeProperty} in your xml to have it replaced by this value"
+        }
+        $conf | ConvertTo-Json | Out-File -FilePath ("{0}\conf.json" -f $destinationPath)
+    }
+}
+
+# based on https://gist.github.com/chrisbrownie/f20cb4508975fb7fb5da145d3d38024a
+function Add-IEFPoliciesSample {
+    <#
+        .SYNOPSIS
+        Download additional IEF policies from B2C Community samples to add a feature
+    
+        .DESCRIPTION
+        Download additional policies from https://github.com/azure-ad-b2c/samples/tree/master/policies and add to the existing starter pack
+    
+        .PARAMETER destinationPath
+        Directory to download the files to. Default is current directory.
+    
+        .EXAMPLE
+            PS C:\> Add-IEFPoliciesSample -destinationPath "c:\myPolicies"
+        .NOTES
+            None
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$sampleName,
+
+        [ValidateNotNullOrEmpty()]
+        [string]$destinationPath
+    )
+    $owner = "Azure-Ad-b2c"
+    $repository = "samples"
+    if ([string]::IsNullOrEmpty($destinationPath)) {
+        $destinationPath = "."
+    }
+
+    $url = "https://api.github.com/repos/{0}/{1}/contents/policies/" -f $owner, $repository
+    $wr = Invoke-WebRequest -Uri $url
+    $objects = $wr.Content | ConvertFrom-Json
+    $sample = $objects | Where-Object {$_.type -eq "dir" -and $_.name.ToUpper() -eq $sampleName.ToUpper()} | Select-Object -first 1
+    if($null -eq $sample) {
+        "{0} sample not found. Please check https://github.com/azure-ad-b2c/samples/tree/master/policies for the name of the sample folder" -f $sampleName
+        return
+    }
+
+    $wr = Invoke-WebRequest -Uri $sample.url
+    $objects = $wr.Content | ConvertFrom-Json
+    $policies = $objects | Where-Object {$_.type -eq "dir" -and $_.name -eq 'policy'} | Select-Object -first 1
+    if($null -eq $policies) {
+        "{0} sample does not contain policy folder"
+        return
+    }
+
+    $wr = Invoke-WebRequest -Uri $policies.url
+    $objects = $wr.Content | ConvertFrom-Json
+    $files = $objects | Where-Object {$_.type -eq "file"} | Select-Object -exp download_url
+
+    if (-not (Test-Path $destinationPath)) {
+        # Destination path does not exist, let's create it
+        try {
+            New-Item -Path $destinationPath -ItemType Directory -ErrorAction Stop
+        } catch {
+            throw "Could not create path '$destinationPath'!"
+        }
+    }
+
+    foreach ($file in $files) {
+        $fileDestination = Join-Path $destinationPath (Split-Path $file -Leaf)
+        try {
+            Invoke-WebRequest -Uri $file -OutFile $fileDestination -ErrorAction Stop -Verbose
+        } catch {
+            throw "Unable to download '$($file.path)'"
+        }
+    }
+}
+
+function Refresh_token() {
+    $limit_time = (Get-Date).AddMinutes(-5)
+    if($limit_time -ge $global:token_expiry) {
+        $uri = "https://login.microsoftonline.com/organizations/oauth2/v2.0/token" -f $tenantName
+        $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=refresh_token&refresh_token={0}" -f $global:tokens.refresh_token
+        $resp = Invoke-Webrequest -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
+        $global:tokens = $resp.Content | ConvertFrom-Json
+        $global:token_expiry = (Get-Date).AddSeconds($global:tokens.expires_in)
+        "Token refreshed"
     }
 }

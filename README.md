@@ -13,17 +13,17 @@ PowerShell script with several functions:
 1.5. The updated source is stored in a separate directory before upload
 2. Download existing custom journeys from a tenant
 4. Signin to a tenant and obtain access tokens needed by the previous two commands.
+5. Download a sample policies from the B2C Community site: [https://github.com/azure-ad-b2c/samples](https://github.com/azure-ad-b2c/samples)
 
 
 ### Tenant setup
 
-If you have never set up your B2C to use IEF policies you can use [my IEF setup website](https://b2ciefsetup.azurewebsites.net/) or follow [instructions provided in the official documentation](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-get-started) to do so. 
+If you have never set up your B2C to use IEF policies you can use [the IEF setup website](https://aka.ms/b2csetup/) or follow [instructions provided in the official documentation](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-get-started) to do so. 
 
 ### Script Setup
 1. In your PowerShell environment, install the module from the [PowerShell Galery](https://www.powershellgallery.com/packages/IefPolicies).
 2. Optionally, add a conf.json file to the folder where you keep your xml policies. In this file you can define a value for the Prefix attribute (see below) as well as any other strings you wish to replace in your policies. **Note:** that the *yourtenant* string will be repalced automatically by the name of the tenant you are logged into when running the script.
 1. Log in to your B2C tenant using Connect-AzureAD (V1) or Connect-IefPolicies (V2)
-4. 
 
 
 The script will use the following string replacement rules to apply your *appSettings.json* values.
