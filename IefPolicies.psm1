@@ -56,7 +56,7 @@
 
 
     # upload policies whose base id is given
-    function Import-Children($baseId) {
+    function Import-Children($baseId, [bool] $force) {
         foreach($p in $policyList) {
             if ($p.BaseId -eq $baseId) {
                 # Skip unchanged files
@@ -76,9 +76,9 @@
                     }
                     $outFile = '{0}\{1}' -f $envUpdatedDir, $p.Source
                     if (Test-Path $outFile) {
-                        if ($p.LastWrite.Ticks -le (Get-Item $outFile).LastWriteTime.Ticks) {
+                        if (($p.LastWrite.Ticks -le (Get-Item $outFile).LastWriteTime.Ticks) -and -not $force) {
                             "{0}: is up to date" -f $p.Id
-                            Import-Children $p.Id
+                            Import-Children $p.Id $false
                             continue;
                         }
                     }
@@ -89,7 +89,7 @@
                 $xml = [xml] $p.Body
                 $xml.PreserveWhitespace = $true
                 try {
-                    $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/organization" -Method Get -Headers $headers
+                    $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/organization" -Method Get -Headers $headers
                     $xml.TrustFrameworkPolicy.TenantObjectId = $resp.value[0].Id
                     $policy = $xml.OuterXml
                 } catch {
@@ -120,18 +120,18 @@
                 if (-not $generateOnly) {
                     $exists = $true
                     try {
-                        Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}" -f $policyId) -Method Get -Headers $headers| Out-Null
+                        Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}" -f $policyId) -Method Get -Headers $headers| Out-Null
                     } catch {
                         $exists = $false
                     }
                     try {
                         if ($exists) {
                             "Replacing"
-                            Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Put -Headers $headersXml -Body $policy| Out-Null 
+                            Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Put -Headers $headersXml -Body $policy| Out-Null 
                             #Set-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) -Id $policyId | Out-Null
                         } else {
                             "New journey"
-                            Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/trustFramework/policies" -Method Post -Headers $headersXml -Body $policy | Out-Null                           
+                            Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/trustFramework/policies" -Method Post -Headers $headersXml -Body $policy | Out-Null                           
                             #New-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) | Out-Null
                         }
                     } catch {
@@ -146,7 +146,7 @@
 
                 if ($isOK) {
                     out-file -FilePath $outFile -inputobject $policy
-                    Import-Children $p.Id
+                    Import-Children $p.Id $true
                 }
             }
         }
@@ -174,14 +174,14 @@
     'Content-Type' = 'application/xml';
     'Authorization' = ("Bearer {0}" -f $tokens.access_token);
     }
-    $domains = Invoke-RestMethod -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
+    $domains = Invoke-RestMethod -UseBasicParsing  -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
     $b2cDomain = $domains.value[0].id
     $b2cName = $b2cDomain.Split('.')[0]
     
     try {
-        $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
+        $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
         $iefRes = $resp.value[0]
-        $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'ProxyIdentityExperienceFramework')" -Method Get -Headers $headers
+        $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'ProxyIdentityExperienceFramework')" -Method Get -Headers $headers
         $iefProxy = $resp.value[0]
     } catch {
         "Please ensure your B2C tenant is setup for using IEF (https://aka.ms/b2csetup)"
@@ -205,7 +205,7 @@
     }
 
     # now start the upload process making sure you start with the base (base id == null)
-    Import-Children($null)
+    Import-Children $null $false
 }
 
 
@@ -265,11 +265,11 @@ function Export-IEFPolicies {
     }
 
     $prefix = "B2C_1A_" + $prefix
-    $policies = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/trustFramework/policies/" -Method Get -Headers $headers
+    $policies = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/trustFramework/policies/" -Method Get -Headers $headers
     foreach($policy in $policies.value | Where-Object {($_.id).startsWith($prefix)}) {
         $fileName = "{0}\{1}.xml" -f $destinationPath, $policy.Id
-        $policyXml = Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policy.id) -Method Get -Headers $headersXml
-        $policyXml >> $fileName
+        $policyXml = Invoke-WebRequest -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policy.id) -Method Get -Headers $headersXml
+        $policyXml.Content >> $fileName
         #Get-AzureADMSTrustFrameworkPolicy -Id $policy.Id >> $fileName
     }  
 }
@@ -313,7 +313,7 @@ function Connect-IEFPolicies {
     }
     $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/devicecode" -f $tenantName
     $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework Application.Read.All Directory.Read.All offline_access"
-    $resp = Invoke-Webrequest -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
+    $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
     $codeResp = $resp.Content | ConvertFrom-Json
     $codeResp.message
     #if(-not (Get-Host).Name.StartsWith('Visual Studio Code Host')) {
@@ -325,7 +325,7 @@ function Connect-IEFPolicies {
         try {
             $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $tenantName
             $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=device_code&device_code={0}" -f $codeResp.device_code
-            $resp = Invoke-Webrequest -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
+            $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
             $global:tokens = $resp.Content | ConvertFrom-Json
             $global:token_expiry = (Get-Date).AddSeconds($global:tokens.expires_in)
             "Authorization completed"
@@ -333,14 +333,14 @@ function Connect-IEFPolicies {
                 'Content-Type' = 'application/json';
                 'Authorization' = ("Bearer {0}" -f $tokens.access_token);
             }
-            $domains = Invoke-RestMethod -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
+            $domains = Invoke-RestMethod -UseBasicParsing  -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
             $b2cDomain = $domains.value[0].id
             $b2cName = $b2cDomain.Split('.')[0] 
             "Logged in to {0} tenant." -f $b2cName   
             try {
-                $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
+                $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
                 $iefRes = $resp.value[0]
-                $resp = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'ProxyIdentityExperienceFramework')" -Method Get -Headers $headers
+                $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'ProxyIdentityExperienceFramework')" -Method Get -Headers $headers
                 $iefProxy = $resp.value[0]
                 if ($null -eq $iefRes -or
                     $null -eq $iefProxy) {
@@ -398,7 +398,7 @@ param(
     }
 
     $url = "https://api.github.com/repos/{0}/{1}/contents/{2}" -f $owner, $repository, $path
-    $wr = Invoke-WebRequest -Uri $url
+    $wr = Invoke-WebRequest -UseBasicParsing  -Uri $url 
     $objects = $wr.Content | ConvertFrom-Json
     $files = $objects | Where-Object {$_.type -eq "file"} | Select-Object -exp download_url
     $directories = $objects | Where-Object {$_.type -eq "dir"}
@@ -421,7 +421,7 @@ param(
     foreach ($file in $files) {
         $fileDestination = Join-Path $destinationPath (Split-Path $file -Leaf)
         try {
-            Invoke-WebRequest -Uri $file -OutFile $fileDestination -ErrorAction Stop -Verbose
+            Invoke-WebRequest -UseBasicParsing  -Uri $file -OutFile $fileDestination -ErrorAction Stop -Verbose
             "Downloaded '$($file)' to '$fileDestination'"
             ++$count
         } catch {
@@ -429,7 +429,6 @@ param(
         }
     }
     if ($count -gt 0) {
-        $destinationPath = '.'
         $fileDestination = Join-Path $destinationPath 'conf.json'
         $conf = @{
             Prefix = "V1" 
@@ -472,7 +471,7 @@ function Add-IEFPoliciesSample {
     }
 
     $url = "https://api.github.com/repos/{0}/{1}/contents/policies/" -f $owner, $repository
-    $wr = Invoke-WebRequest -Uri $url
+    $wr = Invoke-WebRequest -UseBasicParsing  -Uri $url
     $objects = $wr.Content | ConvertFrom-Json
     $sample = $objects | Where-Object {$_.type -eq "dir" -and $_.name.ToUpper() -eq $sampleName.ToUpper()} | Select-Object -first 1
     if($null -eq $sample) {
@@ -480,7 +479,7 @@ function Add-IEFPoliciesSample {
         return
     }
 
-    $wr = Invoke-WebRequest -Uri $sample.url
+    $wr = Invoke-WebRequest -UseBasicParsing  -Uri $sample.url
     $objects = $wr.Content | ConvertFrom-Json
     $policies = $objects | Where-Object {$_.type -eq "dir" -and $_.name -eq 'policy'} | Select-Object -first 1
     if($null -eq $policies) {
@@ -488,7 +487,7 @@ function Add-IEFPoliciesSample {
         return
     }
 
-    $wr = Invoke-WebRequest -Uri $policies.url
+    $wr = Invoke-WebRequest -UseBasicParsing  -Uri $policies.url
     $objects = $wr.Content | ConvertFrom-Json
     $files = $objects | Where-Object {$_.type -eq "file"} | Select-Object -exp download_url
 
@@ -504,7 +503,7 @@ function Add-IEFPoliciesSample {
     foreach ($file in $files) {
         $fileDestination = Join-Path $destinationPath (Split-Path $file -Leaf)
         try {
-            Invoke-WebRequest -Uri $file -OutFile $fileDestination -ErrorAction Stop -Verbose
+            Invoke-WebRequest -UseBasicParsing  -Uri $file -OutFile $fileDestination -ErrorAction Stop -Verbose
         } catch {
             throw "Unable to download '$($file.path)'"
         }
@@ -516,7 +515,7 @@ function Refresh_token() {
     if($limit_time -ge $global:token_expiry) {
         $uri = "https://login.microsoftonline.com/organizations/oauth2/v2.0/token" -f $tenantName
         $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=refresh_token&refresh_token={0}" -f $global:tokens.refresh_token
-        $resp = Invoke-Webrequest -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
+        $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
         $global:tokens = $resp.Content | ConvertFrom-Json
         $global:token_expiry = (Get-Date).AddSeconds($global:tokens.expires_in)
         "Token refreshed"
