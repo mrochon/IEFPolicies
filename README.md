@@ -1,17 +1,12 @@
 # IEF Policies PowerShell module
 
 ## Purpose
-PowerShell script with several functions:
-1. Download a starter pack (local, social, etc.)
-1. Configure and upload policies
-1.1 Modifies the xml of a set of IEF policies replacing them with values from the target B2C tenant and an optional configuration (useful if policies need to be used in different tenants - Dev, QA, etc. - with different REST urls, key names, etc.) 
-1.2. Optionally uploads the files to a B2C tenants
-1.3. Automatically updates the xml source with the name of the current tenant and the values for IEF App and Proxy app.
-1.4. Updates xml source by replacing any {} bound strings with the values of attributes named with the same string in a configuration file
-1.5. The updated source is stored in a separate directory before upload
-2. Download existing custom journeys from a tenant
-4. Signin to a tenant and obtain access tokens needed by the previous two commands.
-5. Download a sample policies from the B2C Community site: [https://github.com/azure-ad-b2c/samples](https://github.com/azure-ad-b2c/samples)
+Aids in the development and deployment of the Azure B2C Identity Experience Policy xml files. Provides cmdlets to initiate a
+new IEF project from the starter pack, augment it with additional sample-sourced files an deploy these to a tenant. The import cmdlet 
+does on-the-fly substitution of source elements which vary from tenant to tenant, e.g. tenant name, IEFApplication and ProxyIEFApplication
+application ids. Effectively, it allows the developer to deploy a starter pack to their B2C tenant with no code modification whatsoever.
+It also makes it easier to re-deploy the same set of xml policies to multiple tenants (dev, test, etc.) by just adjusting the 
+configuration file used by the import cmdlet.
 
 ## Installation
 
@@ -36,7 +31,7 @@ New-IefPolicies -destinationPath $dest  `
 
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
-| destinationPath | Y | Directory path where your xml policies are stored. Will be created if does not already exist |
+| destinationPath | N | Directory path where your xml policies are stored. Will be created if does not already exist. Current directory is default |
 
 ### Connect-IEFPolicies
 
@@ -84,11 +79,11 @@ Parameters:
 
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
-| sourceDirectory | Y | Directory path where your xml policies are stored |
-| updatedSourceDirectory | N | Directory path where the policies updated by this script will be stored. Also used to prevent uploading unmodified policies |
+| sourceDirectory | N | Directory path where your xml policies are stored (default: current directory) |
+| updatedSourceDirectory | N | Directory path where the policies updated by this script will be stored. Also used to prevent uploading unmodified policies. Default: ./debug/yourtenant subfolder. |
 | configurationFilePath | N | json file with additional replacement strings. Default: *.\conf.json*. The script will match any property in this file with a string with format *{<property name>}* and replace it with the value of the property |
 | generateOnly | N | If used, the script will only generate policy files but not upload them to B2C |
-| prefix | N | String inserted into the name of generated policies, e.g. the new base policy name will be *B2C_1A_XYZTrustFrameBase, where XYZ is the value of the provided prefix |
+| prefix | N | String inserted into the name of generated policies, e.g. the new base policy name will be *B2C_1A_XYZTrustFrameBase, where XYZ is the value of the provided prefix. Can also be set in the conf.json file |
 
 ### Export-IEFPolicies
 
