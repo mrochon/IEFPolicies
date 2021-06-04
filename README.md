@@ -1,7 +1,5 @@
 # IEF Policies PowerShell module
 
-PowerShell module for handling B2C custom journeys. Install it from the [PowerShell Galery](https://www.powershellgallery.com/packages/IefPolicies).
-
 ## Purpose
 PowerShell script with several functions:
 1. Download a starter pack (local, social, etc.)
@@ -15,24 +13,15 @@ PowerShell script with several functions:
 4. Signin to a tenant and obtain access tokens needed by the previous two commands.
 5. Download a sample policies from the B2C Community site: [https://github.com/azure-ad-b2c/samples](https://github.com/azure-ad-b2c/samples)
 
+## Installation
 
-### Tenant setup
+This module can be instaled from the [PowerShell Gallery](https://www.powershellgallery.com/packages/IefPolicies/)
+
+## Tenant setup
 
 If you have never set up your B2C to use IEF policies you can use [the IEF setup website](https://aka.ms/b2csetup/) or follow [instructions provided in the official documentation](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-get-started) to do so. 
 
-### Script Setup
-1. In your PowerShell environment, install the module from the [PowerShell Galery](https://www.powershellgallery.com/packages/IefPolicies).
-2. Optionally, add a conf.json file to the folder where you keep your xml policies. In this file you can define a value for the Prefix attribute (see below) as well as any other strings you wish to replace in your policies. **Note:** that the *yourtenant* string will be repalced automatically by the name of the tenant you are logged into when running the script.
-1. Log in to your B2C tenant using Connect-AzureAD (V1) or Connect-IefPolicies (V2)
-
-
-The script will use the following string replacement rules to apply your *appSettings.json* values.
-
-| conf.json property | effect on policy source |
-| -------- | ------ |
-| Prefix | Inserted into the name of policies, e.g. *B2C_1A_MyTrustBase* where *My* is the value of the PolicyPrefix. Makes it easier to handle several sets of IEF policies in the tenant |
-| *name* | Replace any occurrence of '{*name*}' in policy with the value of this attribute in conf.json |
-
+## Cmdlets
 ### New-IEFPolicies
 
 Use *New-IEFPolicies* function to download a set of polciies from the [Azure B2C StarterPack](https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack).
@@ -48,14 +37,44 @@ New-IefPolicies -destinationPath $dest  `
 | -------- | ------ | ----- |
 | destinationPath | Y | Directory path where your xml policies are stored. Will be created if does not already exist |
 
-### Upload-IEFPolicies
+### Connect-IEFPolicies
 
-Use *Import-IEFPolicies* function to upload your IEF policies to the B2C tenant you are currently signed into.
+Use *Connect-IEFPolicies* cmdlet to sign in to your B2C tenant and obtain access tokens needed to execute other
+cmdlets (*import-* and *export-*) in this module which require Graph access to the tenant.
 
 E.g.
 
 ```PowerShell
-Connect-IefPolicies -Tenant yourtenant.onmicrosoft.com
+Connect-IefPolicies -tenant myTenant  `
+```
+
+| Property name | Required | Purpose |
+| -------- | ------ | ----- |
+| tenant | N | Name of tenant you want to sign into. '.onmicrosoft.com' is not required. This parameter is required
+if you are signing in with an account which is an invited guest in your B2C tenant |
+
+### import-IEFPolicies
+
+Use *Import-IEFPolicies* function to upload your IEF policies to the B2C tenant you are currently signed into. 
+
+Before uploading, the cmdlet will modify your xml files and store the new versions in the directory identified by the
+*updatedSourceDirectory* (*.debug/<yourtenantName>* by default). The cmdlet will replace any occurrences of *yourtenant* string
+(used in all StarterPolicies) with the name of the tenant you have logged in using *Connect-IefPolicies*. It will use a json configuration file (if provided, by default it will look for conf.json in the current directory) to make other changes as well. The Json
+file defines values to be replaced in the original xml files. E.g.
+
+```Json
+{
+    "Prefix": "V1",
+    "MyRESTUrl": "https://mywebsite.com/users"
+}
+```
+will cause this cmdlet to inject *V1* into names of all policies, i.e. *B2C_1A_TrustFrameworkBase* will become *B2C_1A_V1TrustFrameworkBase*, etc. and any occurrence of *{MyRESTUrl}* in your xml policies to be replaced with
+the above url.
+
+E.g.
+
+```PowerShell
+Connect-IefPolicies -Tenant yourtenant
 cd 'c:\your directory with the IEF policies'
 Import-IEFPolicies 
 ```
@@ -84,7 +103,7 @@ Export-IEFPolicies  -destinationPath $dest  `
 
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
-| destinationPath | Y | Directory path where your xml policies are stored. Must already exist |
-| tenantName | N | Prefix part of your tenant name, e.g. *mytenant* represent *mytenant.onmicrosoft.com* |
+| destinationPath | N | Directory path where your xml policies are stored. Must already exist |
+| prefix | N | Download only policies whose name starts with *"B2C_1A_prefix"* |
 
 
