@@ -24,7 +24,8 @@ If you have never set up your B2C to use IEF policies you can use [the IEF setup
 ## Cmdlets
 ### New-IEFPolicies
 
-Use *New-IEFPolicies* function to download a set of polciies from the [Azure B2C StarterPack](https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack).
+Use *New-IEFPolicies* function to download a set of policies from the [Azure B2C StarterPack](https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack). The cmdlet will prompt you for which of the starter packs (local, social, etc.)
+to download.
 
 E.g.
 
