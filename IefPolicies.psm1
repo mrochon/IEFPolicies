@@ -18,24 +18,12 @@
     Directory updated policies are stored after upload
     
     .PARAMETER prefix
-    Parameter to be injected into the name of each policy (e.g. B2C_1A_YOURPREFIXBase)
-    
-    .PARAMETER generateOnly
-    Update xml files and store them in the updatedSourceDirectory but do not upload to the B2C tenant
-    
-    .EXAMPLE
-        PS C:\> Import-IEFPolicies
-
-        Upload policies from the current work directory using conf.json file for configuration data if it exists.
     
     .NOTES
     Please use connect-iefpolicies -tenant <tanant Name> before executing this command
     #>
     [CmdletBinding()]
     param(
-        [ValidateNotNullOrEmpty()]
-        [string]$tenantName,
-
         #[Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$sourceDirectory = '.\',
@@ -300,18 +288,18 @@ function Connect-IEFPolicies {
         [string]$tenant
     )
     if ([string]::IsNullOrEmpty($tenant)) {
-        $tenantName = "organizations"
+        $global:tenantName = "organizations"
     } else {
          if ($tenant.EndsWith(".onmicrosoft.com")) {
-            $tenantName = $tenant
+            $global:tenantName = $tenant
         } else {
-            $tenantName = "{0}.onmicrosoft.com" -f $tenant
+            $global:tenantName = "{0}.onmicrosoft.com" -f $tenant
         }
     }
     $hdrs = @{
         'Content-Type' = "application/x-www-form-urlencoded"
     }
-    $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/devicecode" -f $tenantName
+    $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/devicecode" -f $global:tenantName
     $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework Application.Read.All Directory.Read.All offline_access"
     $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
     $codeResp = $resp.Content | ConvertFrom-Json
@@ -323,7 +311,7 @@ function Connect-IEFPolicies {
     for($iter = 1; $iter -le ($codeResp.expires_in / $codeResp.interval); $iter++) {
         Start-Sleep -Seconds $codeResp.interval
         try {
-            $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $tenantName
+            $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $global:tenantName
             $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=device_code&device_code={0}" -f $codeResp.device_code
             $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
             $global:tokens = $resp.Content | ConvertFrom-Json
@@ -513,7 +501,7 @@ function Add-IEFPoliciesSample {
 function Refresh_token() {
     $limit_time = (Get-Date).AddMinutes(-5)
     if($limit_time -ge $global:token_expiry) {
-        $uri = "https://login.microsoftonline.com/organizations/oauth2/v2.0/token" -f $tenantName
+        $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $global:tenantName
         $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=refresh_token&refresh_token={0}" -f $global:tokens.refresh_token
         $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
         $global:tokens = $resp.Content | ConvertFrom-Json
