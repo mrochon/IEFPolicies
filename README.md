@@ -46,10 +46,9 @@ Connect-IefPolicies -tenant myTenant  `
 
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
-| tenant | N | Name of tenant you want to sign into. '.onmicrosoft.com' is not required. This parameter is required
-if you are signing in with an account which is an invited guest in your B2C tenant |
+| tenant | N | Name of tenant you want to sign into. '.onmicrosoft.com' is not required. This parameter is required if you are signing in with an account which is an invited guest in your B2C tenant |
 
-### import-IEFPolicies
+### Import-IEFPolicies
 
 Use *Import-IEFPolicies* function to upload your IEF policies to the B2C tenant you are currently signed into. 
 
@@ -64,7 +63,7 @@ file defines values to be replaced in the original xml files. E.g.
     "MyRESTUrl": "https://mywebsite.com/users"
 }
 ```
-will cause this cmdlet to inject *V1* into names of all policies, i.e. *B2C_1A_TrustFrameworkBase* will become *B2C_1A_V1TrustFrameworkBase*, etc. and any occurrence of *{MyRESTUrl}* in your xml policies to be replaced with
+will cause this cmdlet to inject *V1* into names of all policies, i.e. *B2C_1A_TrustFrameworkBase* will become *B2C_1A_V1TrustFrameworkBase*, etc. and any occurrences of *{MyRESTUrl}* in your xml policies to be replaced with
 the above url.
 
 E.g.
