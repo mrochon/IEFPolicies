@@ -48,7 +48,28 @@ Connect-IefPolicies -tenant myTenant  `
 | -------- | ------ | ----- |
 | tenant | N | Name of tenant you want to sign into. '.onmicrosoft.com' is not required. This parameter is required if you are signing in with an account which is an invited guest in your B2C tenant |
 
-### Import-IEFPolicies
+### Add-IEFPoliciesSample
+
+Downloads policy files from one of the [B2C Community samples](https://github.com/azure-ad-b2c/samples). Only xml policy files are downloaded. Since these do nlt include the base xml file and individual files are named uniquely to the sample type, you can **usually**
+add them to an existing startr pack set. You should check which starter pack they are based on.
+
+The following example add a single policy [from a specific B2C Community](https://github.com/azure-ad-b2c/samples/tree/master/policies/default-home-realm-discovery) to the current folder.
+
+```PowerShell
+Add-IefPoliciesSample 
+cd 'c:\your directory with the IEF policies'
+Add-IEFPoliciesSample default-home-realm-discovery
+```
+
+Parameters:
+
+| Property name | Required | Purpose |
+| -------- | ------ | ----- |
+| sampleName | Y | Name of the sub-folder within the *policies* folder which contains the sample |
+| destinationPath | N | Directory to download the files to. Current directory by default. |
+
+
+### Import-IEFPolicies 
 
 Use *Import-IEFPolicies* function to upload your IEF policies to the B2C tenant you are currently signed into. 
 
