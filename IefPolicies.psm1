@@ -512,11 +512,11 @@ function Add-IEFPoliciesSample {
 }
 
 function Refresh_token() {
-    if ([string]::IsNullOrEmpty($global:tokens.refresh_token)) {
-        throw "No refresh token. Please re-authenticate"
-    }
     $limit_time = (Get-Date).AddMinutes(-5)
     if($limit_time -ge $global:token_expiry) {
+        if ([string]::IsNullOrEmpty($global:tokens.refresh_token)) {
+            throw "No refresh token. Please re-authenticate"
+        }        
         $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $global:tenantName
         $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=refresh_token&refresh_token={0}" -f $global:tokens.refresh_token
         $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
