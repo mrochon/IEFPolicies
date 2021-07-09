@@ -18,6 +18,12 @@ LONG DESCRIPTION
     The upload will determine sequence for uploading the files based on their <BasePolicy> specification.
     The upload will store the source of files updated as per above in a separate folder. a subsequent call to
     the upload function will only upload files with timestamps later than those in the separate folder.
+    These functions can be used either via an interactive user signin or using application credentials. For the latter
+    use an application needs to be regsitered in your tenant with the following application Graph permissions:
+    1. Application.Read.All 
+2. Domain.Read.All
+3. Organization.Read.All
+4. Policy.ReadWrite.TrustFramework
 
     This module exports the following functions:
         Connect-IefPolicies
@@ -31,11 +37,13 @@ LONG DESCRIPTION
  
 NOTES
     Author : Marius Rochon
-    Version : 2.0.0
+    Version : 2.1.0
  
 
 [PS] > New-IEFPolicies (you will be prompted for which starter pack to use)
 [PS] > Connect-IefPolicies -tenant myb2ctenant  #(.onmicrosoft.com is not necessary)
+OR
+[PS] > Connect-IefPolicies -tenant myb2ctenant  -clientId "registered app id" -clientSecret "secret"
 [PS] > Import-IEFPolicies
 Upload policies from the current work directory using conf.json file for configuration data, if it exists.
  

@@ -36,17 +36,28 @@ New-IefPolicies -destinationPath $dest  `
 ### Connect-IEFPolicies
 
 Use *Connect-IEFPolicies* cmdlet to sign in to your B2C tenant and obtain access tokens needed to execute other
-cmdlets (*import-* and *export-*) in this module which require Graph access to the tenant.
+cmdlets (*import-* and *export-*) in this module which require Graph access to the tenant. You can sign in either
+interactively using user credentials or using application credentials (id and secret). For the former, the user must be
+able to consent to permissions to operate on the trust framework policies, read domains used by the tenant and read applications registered in the tenant. To use application id and secret, [register an application using Graph](https://docs.microsoft.com/en-us/azure/active-directory-b2c/microsoft-graph-get-started) and grant it the following **application** permissions:
+1. Application.Read.All 
+2. Domain.Read.All
+3. Organization.Read.All
+4. Policy.ReadWrite.TrustFramework
+
+For interactive signin you do **not** need to regsiter an application. This module is already registered as a multi-tenant app.
 
 E.g.
 
 ```PowerShell
-Connect-IefPolicies -tenant myTenant  `
+Connect-IefPolicies -tenant myTenant  
+Connect-IefPolicies -tenant myTenant -clientId "registered app id" -clientSecret "secret"
 ```
 
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
 | tenant | N | Name of tenant you want to sign into. '.onmicrosoft.com' is not required. This parameter is required if you are signing in with an account which is an invited guest in your B2C tenant |
+| clientId | N | id of an application registered in your tenant for non-interactive signin |
+| clientSecret | N | Secret generated for the app |
 
 ### Add-IEFPoliciesSample
 
