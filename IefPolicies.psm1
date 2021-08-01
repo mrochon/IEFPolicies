@@ -273,6 +273,12 @@ function Connect-IEFPolicies {
     .PARAMETER tenant
     Tenant name, e.g. mytenant. .onmicrosoft.com is not needed.
 
+    .PARAMETER clientId
+    OAuth2 client id; when using non-interactive (application) signin)
+
+    .PARAMETER clientSecret
+    OAuth2 client secret; when using non-interactive (application) signin)
+
     .EXAMPLE
         PS C:\> Connect-IEFPolicies -tenant abctenant
 
