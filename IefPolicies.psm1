@@ -66,7 +66,11 @@
                     if (Test-Path $outFile) {
                         if (($p.LastWrite.Ticks -le (Get-Item $outFile).LastWriteTime.Ticks) -and -not $force) {
                             "{0}: is up to date" -f $p.Id
-                            Import-Children $p.Id $false
+                            try {
+                                Import-Children $p.Id $false
+                            } catch {
+                                throw
+                            }
                             continue;
                         }
                     }
@@ -104,7 +108,6 @@
                 }
 
                 $policyId = $p.Id.Replace('_1A_', '_1A_{0}' -f $prefix)
-                $isOK = $true
                 if (-not $generateOnly) {
                     $exists = $true
                     try {
@@ -114,28 +117,21 @@
                     }
                     try {
                         if ($exists) {
-                            "Replacing"
-                            Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Put -Headers $headersXml -Body $policy| Out-Null 
+                            "Replacing existing journey"
+                            Invoke-WebRequest -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Put -Headers $headersXml -Body $policy| Out-Null 
                             #Set-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) -Id $policyId | Out-Null
                         } else {
-                            "New journey"
-                            Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/trustFramework/policies" -Method Post -Headers $headersXml -Body $policy | Out-Null                           
+                            "New Journey"
+                            Invoke-WebRequest -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/trustFramework/policies" -Method Post -Headers $headersXml -Body $policy | Out-Null                           
                             #New-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) | Out-Null
                         }
                     } catch {
-                        $isOk = $false
-                        $_
-                        if(-Not $exists) {
-                            "Use https://b2ciefsetup.azurewebsites.net to ensure the tenant is setup for IEF"
-                        }
-                        "Ending upload"
+                        throw
                     }
                 }
 
-                if ($isOK) {
-                    out-file -FilePath $outFile -inputobject $policy
-                    Import-Children $p.Id $true
-                }
+                out-file -FilePath $outFile -inputobject $policy
+                Import-Children $p.Id $true
             }
         }
     }
@@ -149,7 +145,7 @@
     }
 
     if($null -eq $tokens) {
-        "Please use Connect-IefPolicies -tenant <name> to login first"
+        throw "Please use Connect-IefPolicies -tenant <name> to login first"
         return
     }
     Refresh_token
@@ -172,7 +168,7 @@
         $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'ProxyIdentityExperienceFramework')" -Method Get -Headers $headers
         $iefProxy = $resp.value[0]
     } catch {
-        "Please ensure your B2C tenant is setup for using IEF (https://aka.ms/b2csetup)"
+        throw "Please ensure your B2C tenant is setup for using IEF (https://aka.ms/b2csetup)"
     }
 
     # load originals
@@ -193,7 +189,11 @@
     }
 
     # now start the upload process making sure you start with the base (base id == null)
-    Import-Children $null $false
+    try {
+        Import-Children $null $false
+    } catch {
+        throw
+    }
 }
 
 
@@ -230,8 +230,7 @@ function Export-IEFPolicies {
         [string]$destinationPath
     )
     if($null -eq $tokens) {
-        "Please use Connect-IefPolicies -tenant <name> to login first"
-        return
+        throw "Please use Connect-IefPolicies -tenant <name> to login first"
     }
 
     Refresh_token
@@ -353,7 +352,8 @@ function Connect-IEFPolicies {
                         throw
                     }
                 } catch {
-                    Write-Host -foreground Red "Your tenant is NOT setup for using IEF. Please visit https://aka.ms/b2csetup to set it up"
+                    Write-Error -foreground Red "Your tenant is NOT setup for using IEF. Please visit https://aka.ms/b2csetup to set it up"
+                    throw "Your tenant is NOT setup for using IEF. Please visit https://aka.ms/b2csetup to set it up"
                     $global:tokens = $null
                 }                  
                 break
@@ -482,16 +482,14 @@ function Add-IEFPoliciesSample {
     $objects = $wr.Content | ConvertFrom-Json
     $sample = $objects | Where-Object {$_.type -eq "dir" -and $_.name.ToUpper() -eq $sampleName.ToUpper()} | Select-Object -first 1
     if($null -eq $sample) {
-        "{0} sample not found. Please check https://github.com/azure-ad-b2c/samples/tree/master/policies for the name of the sample folder" -f $sampleName
-        return
+        throw "{0} sample not found. Please check https://github.com/azure-ad-b2c/samples/tree/master/policies for the name of the sample folder" -f $sampleName
     }
 
     $wr = Invoke-WebRequest -UseBasicParsing  -Uri $sample.url
     $objects = $wr.Content | ConvertFrom-Json
     $policies = $objects | Where-Object {$_.type -eq "dir" -and $_.name -eq 'policy'} | Select-Object -first 1
     if($null -eq $policies) {
-        "{0} sample does not contain policy folder"
-        return
+        throw "{0} sample does not contain policy folder"
     }
 
     $wr = Invoke-WebRequest -UseBasicParsing  -Uri $policies.url
