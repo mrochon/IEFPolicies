@@ -18,6 +18,10 @@
     Directory updated policies are stored after upload
     
     .PARAMETER prefix
+    String injected into names of all uploaded policies
+
+    .PARAMETER generateOnly
+    Causes all policies to be updated with conf.json and prefix values and saved into the updatedSourceDirectory without import to B2C
     
     .NOTES
     Please use connect-iefpolicies -tenant <tanant Name> before executing this command
