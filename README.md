@@ -8,6 +8,8 @@ application ids. Effectively, it allows the developer to deploy a starter pack t
 It also makes it easier to re-deploy the same set of xml policies to multiple tenants (dev, test, etc.) by just adjusting the 
 configuration file used by the import cmdlet.
 
+[This repo](https://github.com/mrochon/B2CPipeline) shows how to use this module in an Azure Pipeline for continous deployment of custom journeys.
+
 ## Installation
 
 This module can be instaled from the [PowerShell Gallery](https://www.powershellgallery.com/packages/IefPolicies/)
