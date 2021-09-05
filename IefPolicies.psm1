@@ -176,12 +176,18 @@
     }
 
     # load originals
-    $files = Get-Childitem -Path $sourceDirectory -Include *.xml
+    $files = Get-Childitem -Path $sourceDirectory -Filter '*.xml'
     $policyList = @()
     foreach($policyFile in $files) {
-        $policy = Get-Content $policyFile
-        $xml = [xml] $policy
-        $policyList= $policyList + @(@{ Id = $xml.TrustFrameworkPolicy.PolicyId; BaseId = $xml.TrustFrameworkPolicy.BasePolicy.PolicyId; Body = $policy; Source= $policyFile.Name; LastWrite = $policyFile.LastWriteTime })
+        $policy = Get-Content $policyFile.FullName
+        try {
+            $xml = [xml] $policy
+            $id = $xml.TrustFrameworkPolicy.PolicyId
+            if ($null -eq $id) { continue }
+            $policyList= $policyList + @(@{ Id = $id; BaseId = $xml.TrustFrameworkPolicy.BasePolicy.PolicyId; Body = $policy; Source= $policyFile.Name; LastWrite = $policyFile.LastWriteTime })
+        } catch {
+            "{0} is not an XML file. Ignored." -f $policyFile
+        }
     }
     "Source policies:"
     foreach($p in $policyList) {
