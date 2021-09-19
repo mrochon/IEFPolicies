@@ -10,6 +10,13 @@ configuration file used by the import cmdlet.
 
 [This repo](https://github.com/mrochon/B2CPipeline) shows how to use this module in an Azure Pipeline for continous deployment of custom journeys.
 
+## Change log
+
+| Name  | Description  |
+|---|---|
+| 2.2.4  | Added support for using {tenantId} as automatic replacement property ({Policy:TrustFrameworkTenantId} defined in IEF cannot be used in some policy properties) |
+
+
 ## Installation
 
 This module can be instaled from the [PowerShell Gallery](https://www.powershellgallery.com/packages/IefPolicies/)

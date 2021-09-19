@@ -95,16 +95,20 @@
                 $policy = $policy -replace "yourtenant", $b2cName 
                 $policy = $policy -replace "ProxyIdentityExperienceFrameworkAppId", $iefProxy.appId
                 $policy = $policy -replace "IdentityExperienceFrameworkAppId", $iefRes.appId
+                $policy = $policy -replace "{tenantId}", $global:tenantId
                 $policy = $policy.Replace('PolicyId="B2C_1A_', 'PolicyId="B2C_1A_{0}' -f $prefix)
                 $policy = $policy.Replace('/B2C_1A_', '/B2C_1A_{0}' -f $prefix)
                 $policy = $policy.Replace('<PolicyId>B2C_1A_', '<PolicyId>B2C_1A_{0}' -f $prefix)
 
                 # replace other placeholders, e.g. {MyRest} with http://restfunc.com. Note replacement string must be in {}
                 if ($null -ne $conf) {
-                    $special = @('IdentityExperienceFrameworkAppId', 'ProxyIdentityExperienceFrameworkAppId', 'PolicyPrefix')
+                    $special = @('IdentityExperienceFrameworkAppId', 'ProxyIdentityExperienceFrameworkAppId', 'PolicyPrefix', 'tenantId')
                     foreach($memb in Get-Member -InputObject $conf -MemberType NoteProperty) {
                         if ($memb.MemberType -eq 'NoteProperty') {
-                            if ($special.Contains($memb.Name)) { continue }
+                            if ($special.Contains($memb.Name)) { 
+                                "{0} is a reserved replacement variable. It's value is determined by the signin context." -f $memb.Name
+                                continue 
+                            }
                             $repl = "{{{0}}}" -f $memb.Name
                             $policy = $policy.Replace($repl, $memb.Definition.Split('=')[1])
                         }
@@ -350,8 +354,9 @@ function Connect-IEFPolicies {
                 }
                 $domains = Invoke-RestMethod -UseBasicParsing  -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
                 $b2cDomain = $domains.value[0].id
-                $b2cName = $b2cDomain.Split('.')[0] 
-                "Logged in to {0} tenant." -f $b2cName   
+                $b2cName = $b2cDomain.Split('.')[0]
+                $global:tenantId = $domains.value[0].'@odata.id'.Split('/')[4]
+                "Logged in to {0} tenant ({1})." -f $b2cName, $global:tenantId   
                 try {
                     $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
                     $iefRes = $resp.value[0]
