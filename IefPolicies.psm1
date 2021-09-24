@@ -484,16 +484,30 @@ function Add-IEFPoliciesSample {
         [string]$sampleName,
 
         [ValidateNotNullOrEmpty()]
-        [string]$destinationPath
+        [string]$destinationPath,
+
+        [ValidateNotNullOrEmpty()]
+        [string]$owner,
+
+        [ValidateNotNullOrEmpty()]
+        [string]$repository
     )
-    $owner = "Azure-Ad-b2c"
-    $repository = "samples"
+    if ([string]::IsNullOrEmpty($owner)) {
+        $owner = "Azure-Ad-b2c"
+        $repository = "samples"
+    }
     if ([string]::IsNullOrEmpty($destinationPath)) {
         $destinationPath = "."
     }
+    foreach($p in @("Policies","policies")) {
+        try {
+            $url = "https://api.github.com/repos/{0}/{1}/contents/{2}/" -f $owner, $repository, $p
+            $wr = Invoke-WebRequest -UseBasicParsing  -Uri $url
+            break
+        } catch {
+        }
+    }
 
-    $url = "https://api.github.com/repos/{0}/{1}/contents/policies/" -f $owner, $repository
-    $wr = Invoke-WebRequest -UseBasicParsing  -Uri $url
     $objects = $wr.Content | ConvertFrom-Json
     $sample = $objects | Where-Object {$_.type -eq "dir" -and $_.name.ToUpper() -eq $sampleName.ToUpper()} | Select-Object -first 1
     if($null -eq $sample) {
