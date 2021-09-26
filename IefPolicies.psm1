@@ -472,10 +472,18 @@ function Add-IEFPoliciesSample {
         .PARAMETER destinationPath
         Directory to download the files to. Default is current directory.
     
+        .PARAMETER owner
+        Git repo owner name. Default 'Azure-Ad-B2C'.
+    
+        .PARAMETER repository
+        Git repo folder name. default 'samples'.
+
         .EXAMPLE
-            PS C:\> Add-IEFPoliciesSample -destinationPath "c:\myPolicies"
+            PS C:\> Add-IEFPoliciesSample mfa-email-or-phone
+            Add 'https://github.com/azure-ad-b2c/samples/tree/master/policies/mfa-email-or-phone' sample.
+
         .NOTES
-            None
+            Git repo names are case sensitive, e.g. 'samples' is not the same as 'Samples'.
     #>
     [CmdletBinding()]
     param(
