@@ -526,12 +526,12 @@ function Add-IEFPoliciesSample {
     $objects = $wr.Content | ConvertFrom-Json
     $policies = $objects | Where-Object {$_.type -eq "dir" -and $_.name -eq 'policy'} | Select-Object -first 1
     if($null -eq $policies) {
-        throw "{0} sample does not contain policy folder"
+        throw "{0} sample does not contain policy folder" -f $sample.url
     }
 
     $wr = Invoke-WebRequest -UseBasicParsing  -Uri $policies.url
     $objects = $wr.Content | ConvertFrom-Json
-    $files = $objects | Where-Object {$_.type -eq "file"} | Select-Object -exp download_url
+    $files = $objects | Where-Object {($_.type -eq "file") -and ($_.name.EndsWith('.xml'))} | Select-Object -exp download_url
 
     if (-not (Test-Path $destinationPath)) {
         # Destination path does not exist, let's create it
