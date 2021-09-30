@@ -367,7 +367,7 @@ function Connect-IEFPolicies {
                         throw
                     }
                 } catch {
-                    Write-Error -foreground Red "Your tenant is NOT setup for using IEF. Please visit https://aka.ms/b2csetup to set it up"
+                    "Your tenant is NOT setup for using IEF. Please visit https://aka.ms/b2csetup to set it up"
                     $global:tokens = $null
                     return                    
                 }                  
