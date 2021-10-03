@@ -95,7 +95,7 @@
                 $policy = $policy -replace "yourtenant", $b2cName 
                 $policy = $policy -replace "ProxyIdentityExperienceFrameworkAppId", $iefProxy.appId
                 $policy = $policy -replace "IdentityExperienceFrameworkAppId", $iefRes.appId
-                $policy = $policy -replace "{tenantId}", $global:tenantId
+                $policy = $policy -replace "{tenantId}", $script:tenantId
                 $policy = $policy.Replace('PolicyId="B2C_1A_', 'PolicyId="B2C_1A_{0}' -f $prefix)
                 $policy = $policy.Replace('/B2C_1A_', '/B2C_1A_{0}' -f $prefix)
                 $policy = $policy.Replace('<PolicyId>B2C_1A_', '<PolicyId>B2C_1A_{0}' -f $prefix)
@@ -152,7 +152,7 @@
         }
     }
 
-    if($null -eq $tokens) {
+    if($null -eq $script:tokens) {
         throw "Please use Connect-IefPolicies -tenant <name> to login first"
         return
     }
@@ -160,11 +160,11 @@
 
     $headers = @{
         'Content-Type' = 'application/json';
-        'Authorization' = ("Bearer {0}" -f $tokens.access_token);
+        'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
     $headersXml = @{
     'Content-Type' = 'application/xml';
-    'Authorization' = ("Bearer {0}" -f $tokens.access_token);
+    'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
     $domains = Invoke-RestMethod -UseBasicParsing  -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
     $b2cDomain = $domains.value[0].id
@@ -243,7 +243,7 @@ function Export-IEFPolicies {
         [ValidateNotNullOrEmpty()]
         [string]$destinationPath
     )
-    if($null -eq $tokens) {
+    if($null -eq $script:tokens) {
         throw "Please use Connect-IefPolicies -tenant <name> to login first"
     }
 
@@ -251,11 +251,11 @@ function Export-IEFPolicies {
 
     $headers = @{
         'Content-Type' = 'application/json';
-        'Authorization' = ("Bearer {0}" -f $tokens.access_token);
+        'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
     $headersXml = @{
     'Content-Type' = 'application/xml';
-    'Authorization' = ("Bearer {0}" -f $tokens.access_token);
+    'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
     if ([string]::IsNullOrEmpty($desinationPath)) {
         $destinationPath = ".\"
@@ -311,26 +311,26 @@ function Connect-IEFPolicies {
         [string]$clientSecret
     )
     if ([string]::IsNullOrEmpty($tenant)) {
-        $global:tenantName = "organizations"
+        $script:tenantName = "organizations"
     } else {
          if ($tenant.EndsWith(".onmicrosoft.com")) {
-            $global:tenantName = $tenant
+            $script:tenantName = $tenant
         } else {
-            $global:tenantName = "{0}.onmicrosoft.com" -f $tenant
+            $script:tenantName = "{0}.onmicrosoft.com" -f $tenant
         }
     }
     $hdrs = @{
         'Content-Type' = "application/x-www-form-urlencoded"
     }
     if (-not [string]::IsNullOrEmpty($clientId)) {
-        $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $global:tenantName
+        $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $script:tenantName
         $body = "client_id={0}&client_secret={1}&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&grant_type=client_credentials" -f $clientId, $clientSecret
         $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
-        $global:tokens = $resp.Content | ConvertFrom-Json
-        $global:token_expiry = (Get-Date).AddSeconds($global:tokens.expires_in)
+        $script:tokens = $resp.Content | ConvertFrom-Json
+        $script:token_expiry = (Get-Date).AddSeconds($script:tokens.expires_in)
         "Authorization completed"
     } else {
-        $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/devicecode" -f $global:tenantName
+        $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/devicecode" -f $script:tenantName
         $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework Application.Read.All Directory.Read.All offline_access"
         $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
         $codeResp = $resp.Content | ConvertFrom-Json
@@ -342,21 +342,20 @@ function Connect-IEFPolicies {
         for($iter = 1; $iter -le ($codeResp.expires_in / $codeResp.interval); $iter++) {
             Start-Sleep -Seconds $codeResp.interval
             try {
-                $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $global:tenantName
+                $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $script:tenantName
                 $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=device_code&device_code={0}" -f $codeResp.device_code
                 $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
-                $global:tokens = $resp.Content | ConvertFrom-Json
-                $global:token_expiry = (Get-Date).AddSeconds($global:tokens.expires_in)
+                $script:tokens = $resp.Content | ConvertFrom-Json
+                $script:token_expiry = (Get-Date).AddSeconds($script:tokens.expires_in)
                 "Authorization completed"
                 $headers = @{
                     'Content-Type' = 'application/json';
-                    'Authorization' = ("Bearer {0}" -f $tokens.access_token);
+                    'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
                 }
                 $domains = Invoke-RestMethod -UseBasicParsing  -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
                 $b2cDomain = $domains.value[0].id
                 $b2cName = $b2cDomain.Split('.')[0]
-                $global:tenantId = $domains.value[0].'@odata.id'.Split('/')[4]
-                "Logged in to {0} tenant ({1})." -f $b2cName, $global:tenantId   
+                "Logged in to {0}." -f $b2cName   
                 try {
                     $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
                     $iefRes = $resp.value[0]
@@ -366,9 +365,11 @@ function Connect-IEFPolicies {
                         $null -eq $iefProxy) {
                         throw
                     }
+                    $resp = Invoke-RestMethod -UseBasicParsing -Uri ('https://login.microsoftonline.com/{0}.onmicrosoft.com/v2.0/.well-known/openid-configuration' -f $b2cName) -Method Get -Headers $headers
+                    $script:tenantId = $resp.token_endpoint.Split('/')[3]
                 } catch {
                     "Your tenant is NOT setup for using IEF. Please visit https://aka.ms/b2csetup to set it up"
-                    $global:tokens = $null
+                    $script:tokens = $null
                     return                    
                 }                  
                 break
@@ -554,15 +555,15 @@ function Add-IEFPoliciesSample {
 
 function Refresh_token() {
     $limit_time = (Get-Date).AddMinutes(-5)
-    if($limit_time -ge $global:token_expiry) {
-        if ([string]::IsNullOrEmpty($global:tokens.refresh_token)) {
+    if($limit_time -ge $script:token_expiry) {
+        if ([string]::IsNullOrEmpty($script:tokens.refresh_token)) {
             throw "No refresh token. Please re-authenticate"
         }        
-        $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $global:tenantName
-        $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=refresh_token&refresh_token={0}" -f $global:tokens.refresh_token
+        $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $script:tenantName
+        $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=refresh_token&refresh_token={0}" -f $script:tokens.refresh_token
         $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
-        $global:tokens = $resp.Content | ConvertFrom-Json
-        $global:token_expiry = (Get-Date).AddSeconds($global:tokens.expires_in)
+        $script:tokens = $resp.Content | ConvertFrom-Json
+        $script:token_expiry = (Get-Date).AddSeconds($script:tokens.expires_in)
         "Token refreshed"
     }
 }
