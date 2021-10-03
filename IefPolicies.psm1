@@ -375,6 +375,8 @@ function Connect-IEFPolicies {
                     $script:tenantId = $resp.token_endpoint.Split('/')[3]
                 }  catch {
                     Write-Error "Failed to get tenantid from .well-known"
+                    $script:tokens = $null                    
+                    return
                 }             
                 break
             } catch {
