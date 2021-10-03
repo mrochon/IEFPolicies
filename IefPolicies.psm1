@@ -365,13 +365,17 @@ function Connect-IEFPolicies {
                         $null -eq $iefProxy) {
                         throw
                     }
-                    $resp = Invoke-RestMethod -UseBasicParsing -Uri ('https://login.microsoftonline.com/{0}.onmicrosoft.com/v2.0/.well-known/openid-configuration' -f $b2cName) -Method Get -Headers $headers
-                    $script:tenantId = $resp.token_endpoint.Split('/')[3]
                 } catch {
-                    "Your tenant is NOT setup for using IEF. Please visit https://aka.ms/b2csetup to set it up"
+                    Write-Error "Your tenant is NOT setup for using IEF. Please visit https://aka.ms/b2csetup to set it up"
                     $script:tokens = $null
                     return                    
-                }                  
+                }  
+                try {
+                    $resp = Invoke-RestMethod -UseBasicParsing -Uri ('https://login.microsoftonline.com/{0}.onmicrosoft.com/v2.0/.well-known/openid-configuration' -f $b2cName) -Method Get -Headers $headers
+                    $script:tenantId = $resp.token_endpoint.Split('/')[3]
+                }  catch {
+                    Write-Error "Failed to get tenantid from .well-known"
+                }             
                 break
             } catch {
                 "Waiting..."
