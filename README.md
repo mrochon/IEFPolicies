@@ -88,6 +88,8 @@ Parameters:
 | -------- | ------ | ----- |
 | sampleName | Y | Name of the sub-folder within the *policies* folder which contains the sample |
 | destinationPath | N | Directory to download the files to. Current directory by default. |
+| owner | N | Git repo owner (default: Azure-ad-b2) |
+| repository | N | Repo name (default: samples). IEF policies must be in a *policies* folder |
 
 
 ### Import-IEFPolicies 
