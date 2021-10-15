@@ -143,6 +143,15 @@
             }
         }
     }
+  
+    if(Test-Path $configurationFilePath){
+        try {
+            $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
+            if (-not $prefix){ $prefix = $conf.Prefix }
+        } catch {
+            Write-Error "Failed to parse configuration json file"
+        }
+    }
 
     if ($sourceDirectory.EndsWith('\')) {
         $sourceDirectory = $sourceDirectory + '*' 
@@ -196,10 +205,6 @@
     Write-Host "Source policies:"
     foreach($p in $policyList) {
         Write-Host ("Id: {0}; Base:{1}" -f $p.Id, $p.BaseId)
-    }
-    if(Test-Path $configurationFilePath){
-        $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
-        if (-not $prefix){ $prefix = $conf.Prefix }
     }
 
     # now start the upload process making sure you start with the base (base id == null)
