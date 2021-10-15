@@ -4,7 +4,7 @@
 RootModule = 'IefPolicies.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.2.7'
+ModuleVersion = '2.2.8'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -31,7 +31,7 @@ RequiredModules = @()
 FunctionsToExport = @(
     'New-IEFPolicies'
     'Connect-IEFPolicies'
-    'Delete-IEFPolicies'    
+    'Remove-IEFPolicies'    
     'Export-IEFPolicies'
     'Import-IEFPolicies'
     'Add-IEFPoliciesSample'

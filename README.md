@@ -18,7 +18,7 @@ configuration file used by the import cmdlet.
 | 2.2.6  | Fixed: breaking change in MS Graph no longer returning tenantid in @odata.id |
 | 2.2.7  | Modified: check conf.json validity to avoid null prefix setting |
 |   | Improved: exception handling and error reporting |
-|   | New: Delete-IefPolicies |
+| 2.2.8   | New: Delete-IefPolicies |
 
 
 ## Installation

@@ -606,7 +606,7 @@ function Remove-IEFPolicies {
             if ("YES" -eq $resp) {
                 foreach($policy in $policies.value | Where-Object {($_.id).startsWith($prefix)}) {
                     $url = "https://graph.microsoft.com/beta/trustFramework/policies/{0}" -f $policy.Id
-                    Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $url -Headers $headers -ErrorAction Stop
+                    Invoke-WebRequest -UseBasicParsing  -Method 'DELETE' -Uri $url -Headers $headers -ErrorAction Stop
                 }              
             } else {
                 Write-Host "Delete cancelled."
