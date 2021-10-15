@@ -53,7 +53,7 @@
             if ($p.BaseId -eq $baseId) {
                 # Skip unchanged files
                 #outFile = ""
-                if (-not ([string]::IsNullOrEmpty($updatedSourceDirectory))) {
+                if ($updatedSourceDirectory) {
                     if(!(Test-Path -Path $updatedSourceDirectory )){
                         New-Item -ItemType directory -Path $updatedSourceDirectory
                         Write-Host "Updated source folder created"
@@ -69,7 +69,7 @@
                     $outFile = '{0}\{1}' -f $envUpdatedDir, $p.Source
                     if (Test-Path $outFile) {
                         if (($p.LastWrite.Ticks -le (Get-Item $outFile).LastWriteTime.Ticks) -and -not $force) {
-                            "{0}: is up to date" -f $p.Id
+                            Write-Host ("{0}: is up to date" -f $p.Id)
                             try {
                                 Import-Children $p.Id $false
                             } catch {
@@ -106,7 +106,7 @@
                     foreach($memb in Get-Member -InputObject $conf -MemberType NoteProperty) {
                         if ($memb.MemberType -eq 'NoteProperty') {
                             if ($special.Contains($memb.Name)) { 
-                                "{0} is a reserved replacement variable. It's value is determined by the signin context." -f $memb.Name
+                                Write-Host ("{0} is a reserved replacement variable. It's value is determined by the signin context." -f $memb.Name)
                                 continue 
                             }
                             $repl = "{{{0}}}" -f $memb.Name
@@ -125,11 +125,11 @@
                     }
                     try {
                         if ($exists) {
-                            "Replacing existing journey"
+                            Write-Host ("Replacing existing journey")
                             Invoke-WebRequest -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Put -Headers $headersXml -Body $policy| Out-Null 
                             #Set-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) -Id $policyId | Out-Null
                         } else {
-                            "New Journey"
+                            Write-Host ("New Journey")
                             Invoke-WebRequest -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/trustFramework/policies" -Method Post -Headers $headersXml -Body $policy | Out-Null                           
                             #New-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) | Out-Null
                         }
@@ -190,16 +190,16 @@
             if ($null -eq $id) { continue }
             $policyList= $policyList + @(@{ Id = $id; BaseId = $xml.TrustFrameworkPolicy.BasePolicy.PolicyId; Body = $policy; Source= $policyFile.Name; LastWrite = $policyFile.LastWriteTime })
         } catch {
-            "{0} is not an XML file. Ignored." -f $policyFile
+            Write-Warning ("{0} is not an XML file. Ignored." -f $policyFile)
         }
     }
-    "Source policies:"
+    Write-Host "Source policies:"
     foreach($p in $policyList) {
-        "Id: {0}; Base:{1}" -f $p.Id, $p.BaseId
+        Write-Host ("Id: {0}; Base:{1}" -f $p.Id, $p.BaseId)
     }
     if(Test-Path $configurationFilePath){
         $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
-        if ([string]::IsNullOrEmpty($prefix)){ $prefix = $conf.Prefix }
+        if (-not $prefix){ $prefix = $conf.Prefix }
     }
 
     # now start the upload process making sure you start with the base (base id == null)
@@ -257,7 +257,7 @@ function Export-IEFPolicies {
     'Content-Type' = 'application/xml';
     'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
-    if ([string]::IsNullOrEmpty($desinationPath)) {
+    if (-not $destinationPath) {
         $destinationPath = ".\"
     }
 
@@ -310,7 +310,7 @@ function Connect-IEFPolicies {
         [ValidateNotNullOrEmpty()]
         [string]$clientSecret
     )
-    if ([string]::IsNullOrEmpty($tenant)) {
+    if (-not $tenant) {
         $script:tenantName = "organizations"
     } else {
          if ($tenant.EndsWith(".onmicrosoft.com")) {
@@ -322,7 +322,7 @@ function Connect-IEFPolicies {
     $hdrs = @{
         'Content-Type' = "application/x-www-form-urlencoded"
     }
-    if (-not [string]::IsNullOrEmpty($clientId)) {
+    if ($clientId) {
         $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $script:tenantName
         $body = "client_id={0}&client_secret={1}&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&grant_type=client_credentials" -f $clientId, $clientSecret
         $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
@@ -339,15 +339,17 @@ function Connect-IEFPolicies {
         if(-not $env:TERM_PROGRAM -eq 'vscode') {        
             Start-Process "chrome.exe" $codeResp.verification_uri
         }
+        $completed = $false
         for($iter = 1; $iter -le ($codeResp.expires_in / $codeResp.interval); $iter++) {
             Start-Sleep -Seconds $codeResp.interval
             try {
                 $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $script:tenantName
                 $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=device_code&device_code={0}" -f $codeResp.device_code
                 $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
+                $completed = $true
                 $script:tokens = $resp.Content | ConvertFrom-Json
                 $script:token_expiry = (Get-Date).AddSeconds($script:tokens.expires_in)
-                "Authorization completed"
+                Write-Host "Authorization completed"
                 $headers = @{
                     'Content-Type' = 'application/json';
                     'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
@@ -355,7 +357,7 @@ function Connect-IEFPolicies {
                 $domains = Invoke-RestMethod -UseBasicParsing  -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
                 $b2cDomain = $domains.value[0].id
                 $b2cName = $b2cDomain.Split('.')[0]
-                "Logged in to {0}." -f $b2cName   
+                Write-Host ("Logged in to {0}." -f $b2cName)
                 try {
                     $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
                     $iefRes = $resp.value[0]
@@ -367,20 +369,19 @@ function Connect-IEFPolicies {
                     }
                 } catch {
                     Write-Error "Your tenant is NOT setup for using IEF. Please visit https://aka.ms/b2csetup to set it up"
-                    $script:tokens = $null
-                    return                    
+                    throw          
                 }  
                 try {
                     $resp = Invoke-RestMethod -UseBasicParsing -Uri ('https://login.microsoftonline.com/{0}.onmicrosoft.com/v2.0/.well-known/openid-configuration' -f $b2cName) -Method Get -Headers $headers
                     $script:tenantId = $resp.token_endpoint.Split('/')[3]
                 }  catch {
                     Write-Error "Failed to get tenantid from .well-known"
-                    $script:tokens = $null                    
-                    return
+                    throw
                 }             
                 break
             } catch {
-                "Waiting..."
+                if ($completed) { return }
+                Write-Host "Waiting..."
             }
         } 
     }
@@ -411,7 +412,7 @@ param(
 )
     $owner = "Azure-Samples"
     $repository = "active-directory-b2c-custom-policy-starterpack"
-    if ([string]::IsNullOrEmpty($destinationPath)) {
+    if (-not $destinationPath) {
         $destinationPath = "."
     }
     $path = $null
@@ -507,11 +508,11 @@ function Add-IEFPoliciesSample {
         [ValidateNotNullOrEmpty()]
         [string]$repository
     )
-    if ([string]::IsNullOrEmpty($owner)) {
+    if (-not $owner) {
         $owner = "Azure-Ad-b2c"
         $repository = "samples"
     }
-    if ([string]::IsNullOrEmpty($destinationPath)) {
+    if (-not $destinationPath) {
         $destinationPath = "."
     }
     foreach($p in @("Policies","policies")) {
@@ -559,10 +560,64 @@ function Add-IEFPoliciesSample {
     }
 }
 
+function Remove-IEFPolicies {
+    <#
+        .SYNOPSIS
+        Delete policies from B2C
+    
+        .DESCRIPTION
+        Deletes IEF xml policy files from a B2C tenant with the specified prefix in their name
+    
+        .PARAMETER prefix
+        Used to select only certain files for delete, prefix="V1" will delete all IEF policies with names starting with "B2C_1A_V1"
+
+        .EXAMPLE
+            PS C:\> Delete-IEFPolicies -prefix V10
+    
+            Delete IEF policies with names starting with 'B2C_1A_V10'
+    
+        .NOTES
+        Please use connect-iefpolicies -tenant <tanant Name> before executing this command
+    #>
+        [CmdletBinding()]
+        param(
+            [Parameter(Mandatory)]
+            [ValidateNotNullOrEmpty()]
+            [string]$prefix
+        )
+        if($null -eq $script:tokens) {
+            throw "Please use Connect-IefPolicies -tenant <name> to login first"
+        }
+        Refresh_token
+        $headers = @{
+            'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
+        }
+        $prefix = "B2C_1A_" + $prefix
+        $policies = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/trustFramework/policies/" -Method Get -Headers $headers
+        Write-Host "The following policies wil be deleted."
+        foreach($policy in $policies.value | Where-Object {($_.id).startsWith($prefix)}) {
+            Write-Host $policy.Id
+        }  
+        $resp = (Read-Host -Prompt "Enter 'yes' to confirm").ToUpper()
+        try {
+            if ("YES" -eq $resp) {
+                foreach($policy in $policies.value | Where-Object {($_.id).startsWith($prefix)}) {
+                    $url = "https://graph.microsoft.com/beta/trustFramework/policies/{0}" -f $policy.Id
+                    Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $url -Headers $headers -ErrorAction Stop
+                }              
+            } else {
+                Write-Host "Delete cancelled."
+            }
+        } catch {
+            Write-Error $Error[0]
+        }
+    }
+  
+
 function Refresh_token() {
     $limit_time = (Get-Date).AddMinutes(-5)
     if($limit_time -ge $script:token_expiry) {
-        if ([string]::IsNullOrEmpty($script:tokens.refresh_token)) {
+        if (-not $script:tokens.refresh_token) {
             throw "No refresh token. Please re-authenticate"
         }        
         $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $script:tenantName
@@ -570,6 +625,6 @@ function Refresh_token() {
         $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
         $script:tokens = $resp.Content | ConvertFrom-Json
         $script:token_expiry = (Get-Date).AddSeconds($script:tokens.expires_in)
-        "Token refreshed"
+        Write-Host "Token refreshed"
     }
 }

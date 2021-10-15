@@ -4,7 +4,7 @@
 RootModule = 'IefPolicies.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.2.6'
+ModuleVersion = '2.2.7'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -16,7 +16,7 @@ GUID = '037d0382-a043-46a7-b420-a8eae3f4734b'
 Author = 'Marius Rochon'
 
 # Company or vendor of this module
-CompanyName = 'Microsoft'
+CompanyName = 'Marius Rochon'
 
 # Copyright statement for this module
 Copyright = '(c) Marius Rochon. All rights reserved.'
@@ -31,9 +31,10 @@ RequiredModules = @()
 FunctionsToExport = @(
     'New-IEFPolicies'
     'Connect-IEFPolicies'
+    'Delete-IEFPolicies'    
     'Export-IEFPolicies'
     'Import-IEFPolicies'
-    'Add-IefPoliciesSample'
+    'Add-IEFPoliciesSample'
 )
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.

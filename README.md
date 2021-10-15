@@ -71,7 +71,7 @@ Connect-IefPolicies -tenant myTenant -clientId "registered app id" -clientSecret
 
 ### Add-IEFPoliciesSample
 
-Downloads policy files from one of the [B2C Community samples](https://github.com/azure-ad-b2c/samples). Only xml policy files are downloaded. Since these do nlt include the base xml file and individual files are named uniquely to the sample type, you can **usually**
+Downloads policy files from one of the [B2C Community samples](https://github.com/azure-ad-b2c/samples). Only xml policy files are downloaded. Since these do not include the base xml file, and individual files are named uniquely to the sample type, you can **usually**
 add them to an existing startr pack set. You should check which starter pack they are based on.
 
 The following example add a single policy [from a specific B2C Community](https://github.com/azure-ad-b2c/samples/tree/master/policies/default-home-realm-discovery) to the current folder.
