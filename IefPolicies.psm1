@@ -540,10 +540,6 @@ function Add-IEFPoliciesSample {
         throw "{0} sample does not contain policy folder" -f $sample.url
     }
 
-    $wr = Invoke-WebRequest -UseBasicParsing  -Uri $policies.url
-    $objects = $wr.Content | ConvertFrom-Json
-    $files = $objects | Where-Object {($_.type -eq "file") -and ($_.name.EndsWith('.xml'))} | Select-Object -exp download_url
-
     if (-not (Test-Path $destinationPath)) {
         # Destination path does not exist, let's create it
         try {
@@ -553,16 +549,27 @@ function Add-IEFPoliciesSample {
         }
     }
 
+    $wr = Invoke-WebRequest -UseBasicParsing  -Uri $policies.url
+    $objects = $wr.Content | ConvertFrom-Json
+    $files = $objects | Where-Object {($_.type -eq "file") -and ($_.name.EndsWith('.xml'))} | Select-Object -exp download_url
     foreach ($file in $files) {
         $fileDestination = Join-Path $destinationPath (Split-Path $file -Leaf)
         try {
             Invoke-WebRequest -UseBasicParsing  -Uri $file -OutFile $fileDestination -ErrorAction Stop -Verbose
+            Write-Host ("Downloaded {0}" -f $fileDestination)
         } catch {
             throw "Unable to download '$($file.path)'"
         }
     }
-}
 
+    # Is there a conf.json in the sample we need to merge?
+    $sampleConfPath = $objects | Where-Object {($_.type -eq "file") -and ($_.name.EndsWith('.json'))} | Select-Object -first 1 -exp download_url
+    if ($null -ne $sampleConfPath) {
+        $confPath = Join-Path $destinationPath ("{0}.conf.json" -f $sampleName)
+        Invoke-WebRequest -UseBasicParsing  -Uri $sampleConfPath -OutFile $confPath
+        Write-Host ("Downloaded {0}" -f $confPath)        
+    }
+}
 function Remove-IEFPolicies {
     <#
         .SYNOPSIS

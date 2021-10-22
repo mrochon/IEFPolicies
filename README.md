@@ -19,6 +19,7 @@ configuration file used by the import cmdlet.
 | 2.2.7  | Modified: check conf.json validity to avoid null prefix setting |
 |   | Improved: exception handling and error reporting |
 | 2.2.8   | New: Remove-IefPolicies |
+| 2.2.9   | New: Include sample conf.json in the Add-IefPoliciesSample operation |
 
 
 ## Installation
