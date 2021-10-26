@@ -20,6 +20,7 @@ configuration file used by the import cmdlet.
 |   | Improved: exception handling and error reporting |
 | 2.2.8   | New: Remove-IefPolicies |
 | 2.2.9   | New: Include sample conf.json in the Add-IefPoliciesSample operation |
+| 2.2.10   | New: use values from secrets.json in same directory as conf file |
 
 
 ## Installation
@@ -112,7 +113,8 @@ file defines values to be replaced in the original xml files. E.g.
 }
 ```
 will cause this cmdlet to inject *V1* into names of all policies, i.e. *B2C_1A_TrustFrameworkBase* will become *B2C_1A_V1TrustFrameworkBase*, etc. and any occurrences of *{MyRESTUrl}* in your xml policies to be replaced with
-the above url.
+the above url. If the same folder contains a secrets.json file, the attributes it defines will be added to those in the above configuration file. That allows you to configure your *.gitignore* file to **not** upload your 
+secrets (e.g. AppInsights key used for journey debugging) to your repos.
 
 E.g.
 
@@ -128,7 +130,7 @@ Parameters:
 | -------- | ------ | ----- |
 | sourceDirectory | N | Directory path where your xml policies are stored (default: current directory) |
 | updatedSourceDirectory | N | Directory path where the policies updated by this script will be stored. Also used to prevent uploading unmodified policies. Default: ./debug/yourtenant subfolder. |
-| configurationFilePath | N | json file with additional replacement strings. Default: *.\conf.json*. The script will match any property in this file with a string with format *{<property name>}* and replace it with the value of the property |
+| configurationFilePath | N | json file with additional replacement strings. Default: *.\conf.json*. The script will match any property in this file with a string with format *{<property name>}* and replace it with the value of the property. See above about a *secrets.json* file |
 | generateOnly | N | If used, the script will only generate policy files but not upload them to B2C |
 | prefix | N | String inserted into the name of generated policies, e.g. the new base policy name will be *B2C_1A_XYZTrustFrameBase, where XYZ is the value of the provided prefix. Can also be set in the conf.json file |
 
