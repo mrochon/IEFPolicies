@@ -148,6 +148,14 @@
         try {
             $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
             if (-not $prefix){ $prefix = $conf.Prefix }
+            $confDir = Split-Path -Path $configurationFilePath
+            $secretsPath = "{0}/secrets.json" -f $confDir
+            if(Test-Path $secretsPath) {
+                $secrets = Get-Content -Path $secretsPath | Out-String | ConvertFrom-Json
+                foreach($memb in Get-Member -InputObject $secrets -MemberType NoteProperty) {
+                    Add-Member -InputObject $conf -TypeName $memb.MemberType -NotePropertyName $memb.Name -NotePropertyValue ($memb.Definition.Split('=')[1])
+                }
+            }
         } catch {
             Write-Error "Failed to parse configuration json file"
         }
