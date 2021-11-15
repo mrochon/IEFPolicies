@@ -4,7 +4,7 @@
 RootModule = 'IefPolicies.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.2.9'
+ModuleVersion = '2.2.10'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -22,7 +22,7 @@ CompanyName = 'Marius Rochon'
 Copyright = '(c) Marius Rochon. All rights reserved.'
 
 # Description of the functionality provided by this module
-Description = 'Intelligently upload and download xml IEF policies used for custom journeys in Azure AD B2C. See https://github.com/mrochon/IEFPolicies'
+Description = 'Manage (create, extend, import, export) Azure B2C xml IEF policy sets used for custom journeys. See https://github.com/mrochon/IEFPolicies'
 
 # Modules that must be imported into the global environment prior to importing this module
 RequiredModules = @()
