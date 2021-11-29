@@ -302,7 +302,7 @@ function Connect-IEFPolicies {
     .PARAMETER clientSecret
     OAuth2 client secret; when using non-interactive (application) signin)
 
-    .PARAMETER allowAdmin
+    .PARAMETER allowInit
     Requests additional delegated scopes needed to create applications and keysets  
 
     .EXAMPLE
@@ -323,7 +323,7 @@ function Connect-IEFPolicies {
         [ValidateNotNullOrEmpty()]
         [string]$clientSecret,
         [ValidateNotNullOrEmpty()]
-        [switch]$allowAdmin
+        [switch]$allowInit
     )
     if (-not $tenant) {
         $script:tenantName = "organizations"
@@ -346,7 +346,7 @@ function Connect-IEFPolicies {
         "Authorization completed"
     } else {
         $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/devicecode" -f $script:tenantName
-        if ($allowAdmin) {
+        if ($allowInit) {
             $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework TrustFrameworkKeySet.ReadWrite.All Application.ReadWrite.All Directory.Read.All offline_access"
         } else {
             $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework Application.Read.All Directory.Read.All offline_access"
@@ -665,7 +665,7 @@ function Initialize-IefPolicies() {
             PS C:\> Initialize-IEFPolicies 
        
         .NOTES
-        Please use connect-iefpolicies -tenant <tanant Name> -allowAdmin before executing this command
+        Please use connect-iefpolicies -tenant <tanant Name> -allowInit before executing this command
     #>
         [CmdletBinding()]
         param(
@@ -673,7 +673,7 @@ function Initialize-IefPolicies() {
             [switch]$validateOnly
         )
     if (-not $script:tokens.scope.Split(' ').Contains("Application.ReadWrite.All")) {
-        Write-Error "Please signin agin for elevated privileges: Connect-IefPolicies -Tenant <tenantname> -AllowAdmin"
+        Write-Error "Please signin agin for elevated privileges: Connect-IefPolicies -Tenant <tenantname> -allowInit"
         throw
     }
     $iefAppName = "IdentityExperienceFramework"
@@ -681,7 +681,6 @@ function Initialize-IefPolicies() {
     $iefApp = Get-Application $iefAppname
     $iefProxyApp = Get-Application $iefProxyAppName
     $ok = $true
-    $newApps = $false
     if ($validateOnly) {
         Write-Host "Validation only"
         if ($null -eq $iefApp) {
@@ -698,6 +697,7 @@ function Initialize-IefPolicies() {
         }
         if($ok) {
             Write-Host "To grant/confirm application consent execute the following url: "
+            Write-Host ("https://login.microsoftonline.com/{0}/adminconsent?client_id={1}" -f $script:tenantId, $iefProxyApp.appId)            
         }
         return
     } else {
@@ -706,23 +706,25 @@ function Initialize-IefPolicies() {
             Write-Warning "Please delete them first if you do want to re-initialize your B2C tenant anyway."
             return
         }
-        $iefApp = New-Application $iefAppName
-        Write-Host ("{0} created" -f $iefAppName)
-        $iefProxyApp = New-Application $iefProxyAppName $iefApp
-        Write-Host ("{0} created" -f $iefProxyAppName)
-        $newApps = $true
+        try {
+            $iefApp = New-Application $iefAppName
+            Write-Host ("{0} created" -f $iefAppName)
+            $iefProxyApp = New-Application $iefProxyAppName $iefApp
+            Write-Host ("{0} created" -f $iefProxyAppName)
 
-        New-IefPoliciesKey "TokenSigningKeyContainer" "sig"
-        New-IefPoliciesKey "TokenEncryptionKeyContainer" "enc"
-        New-IefPoliciesKey "FacebookSecret" "sig"
+            New-IefPoliciesKey "TokenSigningKeyContainer" "sig"
+            New-IefPoliciesKey "TokenEncryptionKeyContainer" "enc"
+            New-IefPoliciesKey "FacebookSecret" "sig"
+            Write-Host "Please wait for the setup to complete..."        
+            Start-Sleep -Seconds 30
+        } catch {
+            Write-Error "Initialize failed"
+            throw
+        }
     }
     if($ok) {
-        if ($newApps) {
-            Write-Host "Please wait for the setup to complete..."        
-            Start-Sleep -Seconds 20
-        }
         Write-Host "Please complete admin consent using the following link:"           
-        Write-Host ("https://login.microsoftonline.com/{0}/adminconsent?client_id={1}" -f $script:tenantId, $iefProxyApp.appId)
+        Write-Host ("https://login.microsoftonline.com/{0}/adminconsent?client_id={1}" -f $script:tenantId, $iefProxyApp.appId)    
     }
 }
 function Get-IefPoliciesAADCommon() {
@@ -737,7 +739,7 @@ function Get-IefPoliciesAADCommon() {
             PS C:\> Get-IEFPoliciesAADCommon
        
         .NOTES
-        Please use connect-iefpolicies -tenant <tanant Name> -allowAdmin before executing this command
+        Please use connect-iefpolicies -tenant <tanant Name> -allowInit before executing this command
     #>
     $app = Get-Application "b2c-extensions-app. Do not modify. Used by AADB2C for storing user data."
     Write-Host "Configuration settings:"

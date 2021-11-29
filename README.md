@@ -30,7 +30,7 @@ This module can be instaled from the [PowerShell Gallery](https://www.powershell
 ## Tenant setup
 If your B2C is not yet setup for using IEF (custom journeys) execute:
 ```Powershell
-Connect-IefPolicies <tenantname> -AllowAdmin
+Connect-IefPolicies <tenantname> -allowInit
 Initialize-IefPolicies
 ```
 or use use [the IEF setup website](https://aka.ms/b2csetup/) or follow [instructions provided in the official documentation](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-get-started) to do so. 
@@ -42,7 +42,7 @@ Performs [B2C tenant setup as descibed in the official documentation](https://do
 policy key (B2C_1A_FacebookSecret) to allow uloading of policy sets with social provider support - they all use Facebook as example of a social provider. 
 
 ```PowerShell
-Connect-IefPolicies <b2c name> -allowAdmin
+Connect-IefPolicies <b2c name> -allowInit
 Initialize-IEFPolicies
 ```
 **NOTE:** at completion this command displays a url which, when executed through a browser will allow an administrator to grant admin consent to one of the required applications (IEFProxy) have signin permissons to another. It is **important** to
@@ -79,7 +79,7 @@ Connect-IefPolicies -tenant myTenant -clientId "registered app id" -clientSecret
 | tenant | N | Name of tenant you want to sign into. '.onmicrosoft.com' is not required. This parameter is required if you are signing in with an account which is an invited guest in your B2C tenant |
 | clientId | N | id of an application registered in your tenant for non-interactive signin |
 | clientSecret | N | Secret generated for the app |
-| allowAdmin | N | Requests additional OAuth2 scopes need by the Initialize-IefPolicies command |
+| allowInit | N | Requests additional OAuth2 scopes need by the Initialize-IefPolicies command |
 
 ### Get-IEFPoliciesAADCommon
 
