@@ -29,12 +29,12 @@ RequiredModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
+    'Add-IEFPoliciesSample'    
     'New-IEFPolicies'
     'Connect-IEFPolicies'
     'Remove-IEFPolicies'    
     'Export-IEFPolicies'
     'Import-IEFPolicies'
-    'Add-IEFPoliciesSample'
     'Initialize-IefPolicies'
     'Get-IefPoliciesAADCommon'
 )
