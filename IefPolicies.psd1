@@ -4,7 +4,7 @@
 RootModule = 'IefPolicies.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.2.10'
+ModuleVersion = '2.2.11'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -35,6 +35,8 @@ FunctionsToExport = @(
     'Export-IEFPolicies'
     'Import-IEFPolicies'
     'Add-IEFPoliciesSample'
+    'Initialize-IefPolicies'
+    'Get-IefPoliciesAADCommon'
 )
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.

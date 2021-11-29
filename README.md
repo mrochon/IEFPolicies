@@ -1,12 +1,11 @@
 # IEF Policies PowerShell module
 
 ## Purpose
-Aids in the development and deployment of the Azure B2C Identity Experience Policy xml files. Provides cmdlets to initiate a
-new IEF project from the starter pack, augment it with additional sample-sourced files an deploy these to a tenant. The import cmdlet 
-does on-the-fly substitution of source elements which vary from tenant to tenant, e.g. tenant name, IEFApplication and ProxyIEFApplication
-application ids. Effectively, it allows the developer to deploy a starter pack to their B2C tenant with no code modification whatsoever.
-It also makes it easier to re-deploy the same set of xml policies to multiple tenants (dev, test, etc.) by just adjusting the 
-configuration file used by the import cmdlet.
+Aids in development and deployment of the Azure B2C Identity Experience Policy (IEF) xml files. Provides cmdlets to initiate a
+new policy set from the starter packs, merge community and other samples into the set, deploy to B2C with no need for deployment-specific source changes. Also, includes commands for
+downloading existing policy sets or deleting them from a B2C tenant. Includes a command that may be used to setup a new B2C tenant for use with IEF.
+Makes it easy to re-deploy the same set of xml policies to multiple tenants (dev, test, etc.) by just adjusting the 
+configuration file used by the import cmdlet. Requires either interactive or un-attended (client credentials) authentication to a B2C tenant.
 
 [This repo](https://github.com/mrochon/B2CPipeline) shows how to use this module in an Azure Pipeline for continous deployment of custom journeys.
 
@@ -21,6 +20,7 @@ configuration file used by the import cmdlet.
 | 2.2.8   | New: Remove-IefPolicies |
 | 2.2.9   | New: Include sample conf.json in the Add-IefPoliciesSample operation |
 | 2.2.10   | New: use values from secrets.json in same directory as conf file |
+| 2.2.11   | New: Initialize-IefPolicies and Get-IefPoliciesAADCommon |
 
 
 ## Installation
@@ -28,25 +28,31 @@ configuration file used by the import cmdlet.
 This module can be instaled from the [PowerShell Gallery](https://www.powershellgallery.com/packages/IefPolicies/)
 
 ## Tenant setup
-
-If you have never set up your B2C to use IEF policies you can use [the IEF setup website](https://aka.ms/b2csetup/) or follow [instructions provided in the official documentation](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-get-started) to do so. 
+If your B2C is not yet setup for using IEF (custom journeys) execute:
+```Powershell
+Connect-IefPolicies <tenantname> -AllowAdmin
+Initialize-IefPolicies
+```
+or use use [the IEF setup website](https://aka.ms/b2csetup/) or follow [instructions provided in the official documentation](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-get-started) to do so. 
 
 ## Cmdlets
-### New-IEFPolicies
 
-Use *New-IEFPolicies* function to download a set of policies from the [Azure B2C StarterPack](https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack). The cmdlet will prompt you for which of the starter packs (local, social, etc.)
-to download.
-
-E.g.
+### Initialize-IEFPolicies
+Performs [B2C tenant setup as descibed in the official documentation](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-get-started). This setup is needed only once. This command will also add a **fake** Facebook
+policy key (B2C_1A_FacebookSecret) to allow uloading of policy sets with social provider support - they all use Facebook as example of a social provider. 
 
 ```PowerShell
-$dest = 'C:\LocalAccounts\policies'
-New-IefPolicies -destinationPath $dest  `
+Connect-IefPolicies <b2c name> -allowAdmin
+Initialize-IEFPolicies
 ```
+**NOTE:** at completion this command displays a url which, when executed through a browser will allow an administrator to grant admin consent to one of the required applications (IEFProxy) have signin permissons to another. It is **important** to
+execute this consent as otherwise any uploaded policies will not work for local signin.
 
+
+Parameters:
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
-| destinationPath | N | Directory path where your xml policies are stored. Will be created if does not already exist. Current directory is default |
+| validateOnly | N | Checks for presence of IEF-required applications |
 
 ### Connect-IEFPolicies
 
@@ -73,6 +79,35 @@ Connect-IefPolicies -tenant myTenant -clientId "registered app id" -clientSecret
 | tenant | N | Name of tenant you want to sign into. '.onmicrosoft.com' is not required. This parameter is required if you are signing in with an account which is an invited guest in your B2C tenant |
 | clientId | N | id of an application registered in your tenant for non-interactive signin |
 | clientSecret | N | Secret generated for the app |
+| allowAdmin | N | Requests additional OAuth2 scopes need by the Initialize-IefPolicies command |
+
+### Get-IEFPoliciesAADCommon
+
+Displays application and object ids of a special B2C extensions application. These values are needed if your policies [store or retrieve custom user attributes](https://docs.microsoft.com/en-us/azure/active-directory-b2c/user-flow-custom-attributes?pivots=b2c-custom-policy#azure-ad-b2c-extensions-app) as [for example in this sample](https://github.com/mrochon/b2csamples/tree/master/Policies/PersistCustomAttr)
+
+E.g.
+
+```PowerShell
+Get-IefPoliciesAADCommon
+```
+
+Parameters: none
+
+### New-IEFPolicies
+
+Use *New-IEFPolicies* function to download a set of policies from the [Azure B2C StarterPack](https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack). The cmdlet will prompt you for which of the starter packs (local, social, etc.)
+to download.
+
+E.g.
+
+```PowerShell
+New-IefPolicies -destinationPath $dest 
+```
+
+| Property name | Required | Purpose |
+| -------- | ------ | ----- |
+| destinationPath | N | Directory path where your xml policies are stored. Will be created if does not already exist. Current directory is default |
+
 
 ### Add-IEFPoliciesSample
 
@@ -82,9 +117,9 @@ add them to an existing startr pack set. You should check which starter pack the
 The following example add a single policy [from a specific B2C Community](https://github.com/azure-ad-b2c/samples/tree/master/policies/default-home-realm-discovery) to the current folder.
 
 ```PowerShell
-Add-IefPoliciesSample 
 cd 'c:\your directory with the IEF policies'
 Add-IEFPoliciesSample default-home-realm-discovery
+Add-IefPoliciesSample ConditionalAccess -owner mrochon -repo b2csamples
 ```
 
 Parameters:
@@ -142,7 +177,6 @@ E.g.
 
 ```PowerShell
 $dest = 'C:\LocalAccounts\policies'
-Connect-IefPolicies -Tenant yourtenant.onmicrosoft.com
 Export-IEFPolicies  -destinationPath $dest  `
 ```
 
@@ -151,4 +185,17 @@ Export-IEFPolicies  -destinationPath $dest  `
 | destinationPath | N | Directory path where your xml policies are stored. Must already exist |
 | prefix | N | Download only policies whose name starts with *"B2C_1A_prefix"* |
 
+### Remove-IEFPolicies
+
+Delete a set of policies, whose name starts with the specified prefix from the tenant
+
+For example, the following deletes all policies whose name starts with B2C_1A_V1. User confirmation will be requested before these policies are deleted.
+
+```PowerShell
+Delete-IefPolicies V1
+```
+
+| Property name | Required | Purpose |
+| -------- | ------ | ----- |
+| prefix | Y | Policy name prefix |
 

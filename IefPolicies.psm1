@@ -61,10 +61,10 @@
                     if (-not $updatedSourceDirectory.EndsWith("\")) {
                         $updatedSourceDirectory = $updatedSourceDirectory + "\"
                     }
-                    $envUpdatedDir = '{0}{1}' -f $updatedSourceDirectory, $b2cDomain
+                    $envUpdatedDir = '{0}{1}' -f $updatedSourceDirectory, $script:b2cDomain
                     if(!(Test-Path -Path $envUpdatedDir)){
                         New-Item -ItemType directory -Path $envUpdatedDir
-                        Write-Host "  Updated source folder created for " + $b2cDomain
+                        Write-Host "  Updated source folder created for " + $script:b2cDomain
                     }
                     $outFile = '{0}\{1}' -f $envUpdatedDir, $p.Source
                     if (Test-Path $outFile) {
@@ -92,7 +92,7 @@
                     # tenantId not used
                     $policy = $p.Body
                 }
-                $policy = $policy -replace "yourtenant", $b2cName 
+                $policy = $policy -replace "yourtenant", $script:b2cName 
                 $policy = $policy -replace "ProxyIdentityExperienceFrameworkAppId", $iefProxy.appId
                 $policy = $policy -replace "IdentityExperienceFrameworkAppId", $iefRes.appId
                 $policy = $policy -replace "{tenantId}", $script:tenantId
@@ -183,9 +183,6 @@
     'Content-Type' = 'application/xml';
     'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
-    $domains = Invoke-RestMethod -UseBasicParsing  -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
-    $b2cDomain = $domains.value[0].id
-    $b2cName = $b2cDomain.Split('.')[0]
     
     try {
         $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
@@ -305,6 +302,9 @@ function Connect-IEFPolicies {
     .PARAMETER clientSecret
     OAuth2 client secret; when using non-interactive (application) signin)
 
+    .PARAMETER allowAdmin
+    Requests additional delegated scopes needed to create applications and keysets  
+
     .EXAMPLE
         PS C:\> Connect-IEFPolicies -tenant abctenant
 
@@ -321,7 +321,9 @@ function Connect-IEFPolicies {
         [ValidateNotNullOrEmpty()]
         [string]$clientId,
         [ValidateNotNullOrEmpty()]
-        [string]$clientSecret
+        [string]$clientSecret,
+        [ValidateNotNullOrEmpty()]
+        [switch]$allowAdmin
     )
     if (-not $tenant) {
         $script:tenantName = "organizations"
@@ -344,8 +346,16 @@ function Connect-IEFPolicies {
         "Authorization completed"
     } else {
         $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/devicecode" -f $script:tenantName
-        $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework Application.Read.All Directory.Read.All offline_access"
-        $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
+        if ($allowAdmin) {
+            $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework TrustFrameworkKeySet.ReadWrite.All Application.ReadWrite.All Directory.Read.All offline_access"
+        } else {
+            $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework Application.Read.All Directory.Read.All offline_access"
+        }
+        try {
+            $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
+        } catch {
+            throw
+        }
         $codeResp = $resp.Content | ConvertFrom-Json
         $codeResp.message
         #if(-not (Get-Host).Name.StartsWith('Visual Studio Code Host')) {
@@ -368,9 +378,9 @@ function Connect-IEFPolicies {
                     'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
                 }
                 $domains = Invoke-RestMethod -UseBasicParsing  -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
-                $b2cDomain = $domains.value[0].id
-                $b2cName = $b2cDomain.Split('.')[0]
-                Write-Host ("Logged in to {0}." -f $b2cName)
+                $script:b2cDomain = $domains.value[0].id
+                $script:b2cName = $script:b2cDomain.Split('.')[0]
+                Write-Host ("Logged in to {0}." -f $script:b2cName)
                 try {
                     $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
                     $iefRes = $resp.value[0]
@@ -381,10 +391,11 @@ function Connect-IEFPolicies {
                         throw
                     }
                 } catch {
-                    Write-Error "Your tenant is NOT setup for using IEF. Please visit https://aka.ms/b2csetup to set it up"
+                    Write-Error "Your tenant is NOT setup for using IEF. Please execute Initialize-IefPolicies to set it up"
                 }  
+
                 try {
-                    $resp = Invoke-RestMethod -UseBasicParsing -Uri ('https://login.microsoftonline.com/{0}.onmicrosoft.com/v2.0/.well-known/openid-configuration' -f $b2cName) -Method Get -Headers $headers
+                    $resp = Invoke-RestMethod -UseBasicParsing -Uri ('https://login.microsoftonline.com/{0}.onmicrosoft.com/v2.0/.well-known/openid-configuration' -f $script:b2cName) -Method Get -Headers $headers
                     $script:tenantId = $resp.token_endpoint.Split('/')[3]
                 }  catch {
                     Write-Error "Failed to get tenantid from .well-known"
@@ -636,7 +647,270 @@ function Remove-IEFPolicies {
         }
     }
   
+function Initialize-IefPolicies() {
+    <#
+        .SYNOPSIS
+        Setup or verify setup fo b2C for IEF policy deployment (https://docs.microsoft.com/en-us/azure/active-directory-b2c/tutorial-create-user-flows?pivots=b2c-custom-policy&tabs=applications)
+    
+        .DESCRIPTION
+        1. Creates IdentityExperienceFramework and ProxyuidentityFramework applications (if not already there)
+        2. Creates TokenSigning- and TokenEncryption-Containers
+        3. Creates a fake FB key unless one already there (to simplify use of social authentication starter packs, which all reference FB)
+        4. Provides url for establishing proxy to resource consent
+    
+        .PARAMETER validateOnly
+        Checks for above but does not create any new artifacts
 
+        .EXAMPLE
+            PS C:\> Initialize-IEFPolicies 
+       
+        .NOTES
+        Please use connect-iefpolicies -tenant <tanant Name> -allowAdmin before executing this command
+    #>
+        [CmdletBinding()]
+        param(
+            [ValidateNotNullOrEmpty()]
+            [switch]$validateOnly
+        )
+    if (-not $script:tokens.scope.Split(' ').Contains("Application.ReadWrite.All")) {
+        Write-Error "Please signin agin for elevated privileges: Connect-IefPolicies -Tenant <tenantname> -AllowAdmin"
+        throw
+    }
+    $iefAppName = "IdentityExperienceFramework"
+    $iefProxyAppName = "ProxyIdentityExperienceFramework"
+    $iefApp = Get-Application $iefAppname
+    $iefProxyApp = Get-Application $iefProxyAppName
+    $ok = $true
+    $newApps = $false
+    if ($validateOnly) {
+        Write-Host "Validation only"
+        if ($null -eq $iefApp) {
+            Write-Warning ("{0} application is NOT defined" -f $iefAppName)
+            $ok = $false
+        } else {
+            Write-Host ("{0} application is defined" -f $iefAppName)
+        }
+        if ($null -eq $iefProxyApp) {
+            Write-Warning ("{0} application is NOT defined" -f $iefProxyAppName)
+            $ok = $false
+        } else {
+            Write-Host ("{0} application is defined" -f $iefProxyAppName)
+        }
+        if($ok) {
+            Write-Host "To grant/confirm application consent execute the following url: "
+        }
+        return
+    } else {
+        if($null -eq $iefApp) {
+            $iefApp = New-Application $iefAppName
+            Write-Host ("{0} created" -f $iefAppName)
+            $iefProxyApp = New-Application $iefProxyAppName $iefApp
+            Write-Host ("{0} created" -f $iefProxyAppName)
+            $newApps = $true
+        }
+        New-IefPoliciesKey "TokenSigningKeyContainer" "sig"
+        New-IefPoliciesKey "TokenEncryptionKeyContainer" "enc"
+        New-IefPoliciesKey "FacebookSecret" "sig"
+    }
+    if($ok) {
+        if ($newApps) {
+            Write-Host "Please wait while new entities are created in your b2C tenant..."        
+            while($null -eq (Get-Application $iefProxyAppName)) {
+                Start-Sleep -Seconds 10
+            }
+        }
+        Write-Host "Please complete admin consent using the following link:"           
+        Write-Host ("https://login.microsoftonline.com/{0}/adminconsent?client_id={1}" -f $script:tenantId, $iefProxyApp.appId)
+    }
+}
+function Get-IefPoliciesAADCommon() {
+    <#
+        .SYNOPSIS
+        Get b2C extensions app app and object ids
+    
+        .DESCRIPTION
+        Get b2C extensions app app and object ids
+
+        .EXAMPLE
+            PS C:\> Get-IEFPoliciesAADCommon
+       
+        .NOTES
+        Please use connect-iefpolicies -tenant <tanant Name> -allowAdmin before executing this command
+    #>
+    $app = Get-Application "b2c-extensions-app. Do not modify. Used by AADB2C for storing user data."
+    Write-Host "Configuration settings:"
+    Write-Host ('"ExtAppId": "{0}",' -f $app.appId)
+    Write-Host ('"ExtObjectId": "{0}"' -f $app.id)
+    Write-Host
+    Write-Host "Add this ClaimsProvider to your extensions file"
+    Write-Host '<ClaimsProvider>
+    <DisplayName>Azure Active Directory</DisplayName>
+    <TechnicalProfiles>
+        <TechnicalProfile Id="AAD-Common">
+            <DisplayName>Azure Active Directory</DisplayName>
+            <Metadata>
+                <Item Key="ApplicationObjectId">{ExtObjectId}</Item>
+                <Item Key="ClientId">{ExtAppId}</Item>
+            </Metadata>
+        </TechnicalProfile>
+    </TechnicalProfiles>			
+</ClaimsProvider>'
+}
+
+function New-Application {
+    Param(
+        [Parameter(Mandatory)]
+        [string] $AppName,
+        $API
+    )
+    Refresh_token
+    $headers = @{
+        'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
+        'Content-Type' = "application/json";        
+    }
+    $app = Get-Application $AppName
+    if ($null -ne $app) { return }
+    $OIDCAccess = @{
+        resourceAppId = "00000003-0000-0000-c000-000000000000";
+        resourceAccess = @(
+            @{
+                id = "37f7f235-527c-4136-accd-4a02d197296e";
+                type = "Scope"
+            },
+            @{
+                id = "7427e0e9-2fba-42fe-b0c0-848c9e6a8182";
+                type = "Scope";
+            }
+        )
+    } 
+
+    if ($null -eq $API) {
+        $body = @{
+            displayName = $AppName;
+            signInAudience = "AzureADMyOrg";
+            requiredResourceAccess = @( $OIDCAccess );
+        }  
+        try {
+            $app = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/applications" -Method POST -Headers $headers -Body ($body | ConvertTo-Json -Depth 6)
+        } catch {
+            throw
+        }
+        $apiProps = @{
+            identifierUris = @(("https://{0}/{1}" -f $script:b2cDomain, $app.appId));
+            web = @{
+                redirectUris = @( ("https://{0}.b2clogin.com/{1}" -f $script:b2cName, $script:b2cDomain))
+            };
+            api = @{
+                oauth2PermissionScopes = @(
+                    @{
+                        adminConsentDescription = ("Allow the application to access {0} on behalf of the signed-in user." -f $AppName);
+                        adminConsentDisplayName = ("Access {0}" -f $AppName);
+                        id = [guid]::NewGuid();
+                        isEnabled = $true;
+                        type = "Admin";
+                        value = "user_impersonation";
+                    }
+                )
+            }
+        }
+        try {
+            $resp = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/applications/{0}" -f $app.id) -Method PATCH -Headers $headers -Body ($apiProps | ConvertTo-Json -Depth 6)
+            $app.identifierUris = $apiProps.identifierUris
+            $app.web = $apiProps.web
+            $app.api = $apiProps.api
+        } catch {
+            throw
+        }
+    } else {
+        $body = @{
+            displayName = $AppName;
+            signInAudience = "AzureADMyOrg";
+            publicClient = @{ redirectUris = @( "myapp://auth" ) };
+            isFallbackPublicClient = $true;
+            requiredResourceAccess = @(
+                @{
+                    resourceAppId = $API.appId;
+                    resourceAccess = @(
+                        @{
+                            id = $API.api.oauth2PermissionScopes[0].id;
+                            type = "Scope";
+                        }
+                    )
+                },
+                $OIDCAccess
+            )
+        }
+        try {
+            $app = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/applications" -Method POST -Headers $headers -Body ($body | ConvertTo-Json -Depth 6)
+        } catch {
+            throw
+        }
+    }
+    $sp = @{ appId = $app.appId; displayName = $Appname }
+    $resp = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/servicePrincipals" -f $app.id) -Method POST -Headers $headers -Body ($sp | ConvertTo-Json -Depth 6)
+    return $app
+}
+
+function Get-Application {
+    Param(
+        [Parameter(Mandatory)]
+        [string] $AppName
+    )
+    Refresh_token
+    $headers = @{
+        'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
+    }
+    try {
+        $resp = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/applications?`$filter=displayName eq '{0}'" -f $AppName) -Method Get -Headers $headers
+        $app = $resp.value[0]
+        return $app;
+    } catch {
+        return $null
+    }
+}
+function New-IEFPoliciesKey {
+    <#
+    .SYNOPSIS
+    Creates a B2C policy key
+    
+    .DESCRIPTION
+    Creates a b2C policy key
+    
+    .PARAMETER name
+    Key name
+    
+    .PARAMETER purpose
+    Key purpose (sig or enc)
+
+    .NOTES
+    Please use connect-iefpolicies -tenant <tanant Name> before executing this command
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$name,
+
+        [ValidateNotNullOrEmpty()]
+        [string]$purpose = "sig")
+
+    Refresh_token
+    $headers = @{
+        'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
+        'Content-Type' = "application/json";        
+    }
+    try {
+        $keyset = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/B2C_1A_{0}" -f $name) -Method GET -Headers $headers
+    } catch {
+        try {
+            $keyset = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/trustFramework/keySets" -Method POST -Headers $headers -Body (@{ id = $name} | ConvertTo-Json)
+            $keyset = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}/generateKey" -f $keyset.id) -Method POST -Headers $headers -Body (@{ use = $purpose; kty = "RSA" } | ConvertTo-Json)
+            Write-Host ("{0} generated" -f $name)
+        } catch {
+            throw
+        }
+    }
+}
 function Refresh_token() {
     $limit_time = (Get-Date).AddMinutes(-5)
     if($limit_time -ge $script:token_expiry) {
