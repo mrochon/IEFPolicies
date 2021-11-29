@@ -701,23 +701,25 @@ function Initialize-IefPolicies() {
         }
         return
     } else {
-        if($null -eq $iefApp) {
-            $iefApp = New-Application $iefAppName
-            Write-Host ("{0} created" -f $iefAppName)
-            $iefProxyApp = New-Application $iefProxyAppName $iefApp
-            Write-Host ("{0} created" -f $iefProxyAppName)
-            $newApps = $true
+        if(($null -ne $iefApp) -or ($null -ne $iefProxyApp)) {
+            Write-Warning "IdentityExperienceFramework and/or ProxyidentityexperienceFramework apps already exist."
+            Write-Warning "Please delete them first if you do want to re-initialize your B2C tenant anyway."
+            return
         }
+        $iefApp = New-Application $iefAppName
+        Write-Host ("{0} created" -f $iefAppName)
+        $iefProxyApp = New-Application $iefProxyAppName $iefApp
+        Write-Host ("{0} created" -f $iefProxyAppName)
+        $newApps = $true
+
         New-IefPoliciesKey "TokenSigningKeyContainer" "sig"
         New-IefPoliciesKey "TokenEncryptionKeyContainer" "enc"
         New-IefPoliciesKey "FacebookSecret" "sig"
     }
     if($ok) {
         if ($newApps) {
-            Write-Host "Please wait while new entities are created in your b2C tenant..."        
-            while($null -eq (Get-Application $iefProxyAppName)) {
-                Start-Sleep -Seconds 10
-            }
+            Write-Host "Please wait for the setup to complete..."        
+            Start-Sleep -Seconds 20
         }
         Write-Host "Please complete admin consent using the following link:"           
         Write-Host ("https://login.microsoftonline.com/{0}/adminconsent?client_id={1}" -f $script:tenantId, $iefProxyApp.appId)
