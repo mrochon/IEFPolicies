@@ -1,11 +1,11 @@
 # IEF Policies PowerShell module
 
 ## Purpose
-Aids in development and deployment of the Azure B2C Identity Experience Policy (IEF) xml files. Provides cmdlets to initiate a
+Aids in the development and deployment of the Azure B2C Identity Experience Policy (IEF) xml files. Provides cmdlets to initiate a
 new policy set from the starter packs, merge community and other samples into the set, deploy to B2C with no need for deployment-specific source changes. Also, includes commands for
 downloading existing policy sets or deleting them from a B2C tenant. Includes a command that may be used to setup a new B2C tenant for use with IEF.
 Makes it easy to re-deploy the same set of xml policies to multiple tenants (dev, test, etc.) by just adjusting the 
-configuration file used by the import cmdlet. Requires either interactive or un-attended (client credentials) authentication to a B2C tenant.
+configuration file used by the import cmdlet. Supports either interactive or un-attended (client credentials) authentication to a B2C tenant.
 
 [This repo](https://github.com/mrochon/B2CPipeline) shows how to use this module in an Azure Pipeline for continous deployment of custom journeys.
 
