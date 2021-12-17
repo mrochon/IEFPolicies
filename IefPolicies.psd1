@@ -31,14 +31,16 @@ RequiredModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
-    'Add-IEFPoliciesSample'    
-    'New-IEFPolicies'
-    'Connect-IEFPolicies'
-    'Remove-IEFPolicies'    
+    'Add-IEFPoliciesSample'  
+    'Connect-IEFPolicies' 
     'Export-IEFPolicies'
-    'Import-IEFPolicies'
-    'Initialize-IefPolicies'
-    'Get-IefPoliciesAADCommon'
+    'Get-IefPoliciesAADCommon'    
+    'Import-IEFPolicies' 
+    'Initialize-IefPolicies'            
+    'New-IEFPolicies'
+    'New-IefPoliciesCert'
+    'New-IefPoliciesKey'    
+    'Remove-IEFPolicies'    
 )
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.

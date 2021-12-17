@@ -349,7 +349,7 @@ function Connect-IEFPolicies {
         if ($allowInit) {
             $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework TrustFrameworkKeySet.ReadWrite.All Application.ReadWrite.All Directory.Read.All offline_access"
         } else {
-            $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework Application.Read.All Directory.Read.All offline_access"
+            $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework Application.Read.All Directory.Read.All TrustFrameworkKeySet.ReadWrite.All offline_access"
         }
         try {
             $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
@@ -727,6 +727,88 @@ function Initialize-IefPolicies() {
         Write-Host ("https://login.microsoftonline.com/{0}/adminconsent?client_id={1}" -f $script:tenantId, $iefProxyApp.appId)    
     }
 }
+
+function New-IefPoliciesCert {
+    <#
+        .SYNOPSIS
+        Create a new, self-signed signing cert in B2C PolicyKeys
+    
+        .DESCRIPTION
+        Creates a new self-signed certificte, uploads it (public and private keys) to B2C PolicyKeys.
+        The CN name of the certificate will be <keyName>.<tenant domain name>
+        An existing keyset with same will not be deleted. The new key will be added.
+    
+        .PARAMETER validateOnly
+        Checks for above but does not create any new artifacts
+
+        .EXAMPLE
+            PS C:\> New-IEFPoliciesCert RESTAuth
+       
+        .NOTES
+        You must use connect-iefpolicies -tenant <tanant Name> before executing this command
+    #>
+        [CmdletBinding()]
+        param(
+            [Parameter(Mandatory)]            
+            [ValidateNotNullOrEmpty()]
+            [string]$keyName,
+
+            [ValidateNotNullOrEmpty()]
+            [int]$validityMonths = 12,    
+            
+            [ValidateNotNullOrEmpty()]
+            [int]$startValidInMonths = 0             
+        )
+        Refresh_token
+        $headers = @{
+            'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
+            'Content-Type' = "application/json";        
+        }
+        $certSubject = ("CN={0}.{1}" -f $keyName, $script:b2cDomain)
+        Write-Host ("Creating X509 cert {0}" -f $certSubject)
+        $cert = New-SelfSignedCertificate `
+            -KeyExportPolicy Exportable `
+            -Subject ($certSubject) `
+            -KeyAlgorithm RSA `
+            -KeyLength 2048 `
+            -KeyUsage DigitalSignature `
+            -NotBefore (Get-Date).AddMonths($startValidInMonth) `
+            -NotAfter (Get-Date).AddMonths($startValidInMonth+12) `
+            -CertStoreLocation "Cert:\CurrentUser\My"
+        [string]$pfxPwdPlain = Get-Random
+        $pfxPwd = ConvertTo-SecureString -String $pfxPwdPlain -Force -AsPlainText
+        $pfxPath = ".\RESTClientCert.pfx"
+        $cert | Export-PfxCertificate -FilePath $pfxPath -Password $pfxPwd
+        $pkcs12=[Convert]::ToBase64String([System.IO.File]::ReadAllBytes((get-childitem -path $pfxPath).FullName))
+        #try {
+        #    $key = Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}" -f $keyName) -Method Delete -Headers $headers
+        #} catch { 
+        #    # ok if does not exist
+        #}
+        $body = @{
+            id = $keyName
+        }
+        try {
+            $keyset = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/trustFramework/keySets" -Method Post -Headers $headers -Body (ConvertTo-Json $body) -SkipHttpErrorCheck
+            if(($null -ne $keyset.error) -and ($keyset.error.code -eq 'AADB2C95028')) {
+                Write-Host "Adding cert to existing keyset"
+                $keySetId = "B2C_1A_{0}" -f $keyName
+            } else {
+                Write-Host ("Keyset {0} created"  -f $keySetid)              
+                $keySetId = $keyset.id
+            }
+            $url = ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}/uploadPkcs12" -f $keySetId)
+            $body = @{
+                key = $pkcs12
+                password = $pfxPwdPlain
+            }
+            $key = Invoke-RestMethod -Uri $url -Method Post -Headers $headers -Body (ConvertTo-Json $body)
+            Write-Host ("Certificate created and uploaded" -f $certSubject)
+        } catch {
+            Write-Error "Failed " +  $Error[0]
+        }
+}
+
 function Get-IefPoliciesAADCommon() {
     <#
         .SYNOPSIS
