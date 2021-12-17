@@ -807,6 +807,7 @@ function New-IefPoliciesCert {
         } catch {
             Write-Error "Failed " +  $Error[0]
         }
+        Remove-Item $pfxPath
 }
 
 function Get-IefPoliciesAADCommon() {
