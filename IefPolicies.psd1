@@ -4,7 +4,7 @@
 RootModule = 'IefPolicies.psm1'
 
 # Version number of this module.
-ModuleVersion = '2.2.12'
+ModuleVersion = '3.0.0'
 
 PowerShellVersion = '7.0'
 
@@ -47,7 +47,7 @@ FunctionsToExport = @(
 PrivateData = @{
 
     PSData = @{
-        #Prerelease = 'alpha'
+        Prerelease = 'alpha'
 
         # Tags applied to this module. These help with module discovery in online galleries.
         # Tags = @()
@@ -56,13 +56,13 @@ PrivateData = @{
         # LicenseUri = ''
 
         # A URL to the main website for this project.
-        # ProjectUri = ''
+        ProjectUri = 'https://github.com/mrochon/IEFPolicies'
 
         # A URL to an icon representing this module.
         # IconUri = ''
 
         # ReleaseNotes of this module
-        # ReleaseNotes = ''
+        # ReleaseNotes = 'Requires PowerShell 7 to allow use of the new Invoke-RestMethod returning error messages arther than throwing exceptions'
 
         # Prerelease string of this module
         # Prerelease = ''

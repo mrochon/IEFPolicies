@@ -117,29 +117,23 @@
 
                 $policyId = $p.Id.Replace('_1A_', '_1A_{0}' -f $prefix)
                 if (-not $generateOnly) {
-                    $exists = $true
-                    try {
-                        Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}" -f $policyId) -Method Get -Headers $headers| Out-Null
-                    } catch {
-                        $exists = $false
-                    }
-                    try {
-                        if ($exists) {
-                            Write-Host ("Replacing existing journey")
-                            Invoke-WebRequest -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Put -Headers $headersXml -Body $policy| Out-Null 
-                            #Set-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) -Id $policyId | Out-Null
-                        } else {
-                            Write-Host ("New Journey")
-                            Invoke-WebRequest -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/trustFramework/policies" -Method Post -Headers $headersXml -Body $policy | Out-Null                           
-                            #New-AzureADMSTrustFrameworkPolicy -Content ($policy | Out-String) | Out-Null
-                        }
-                    } catch {
+                    $resp = Invoke-WebRequest -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Put -Headers $headersXml -Body $policy -SkipHttpErrorCheck
+                    if ($resp.StatusCode -eq 201) {
+                        Write-Host "Created"
+                    } elseif ($resp.StatusCode -eq 200) {
+                        Write-Host "Updated"
+                    } else {
+                        Write-Error $resp.Content
                         throw
                     }
                 }
 
                 out-file -FilePath $outFile -inputobject $policy
-                Import-Children $p.Id $true
+                try {
+                    Import-Children $p.Id $true
+                } catch {
+                    throw
+                }
             }
         }
     }
@@ -791,7 +785,7 @@ function New-IefPoliciesCert {
         try {
             $keyset = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/trustFramework/keySets" -Method Post -Headers $headers -Body (ConvertTo-Json $body) -SkipHttpErrorCheck
             if(($null -ne $keyset.error) -and ($keyset.error.code -eq 'AADB2C95028')) {
-                Write-Host "Adding cert to existing keyset"
+                Write-Host "Adding cert to an existing keyset"
                 $keySetId = "B2C_1A_{0}" -f $keyName
             } else {
                 Write-Host ("Keyset {0} created"  -f $keySetid)              
@@ -804,6 +798,7 @@ function New-IefPoliciesCert {
             }
             $key = Invoke-RestMethod -Uri $url -Method Post -Headers $headers -Body (ConvertTo-Json $body)
             Write-Host ("Certificate created and uploaded" -f $certSubject)
+            Write-Host ("Thumbprint: {0}" -f $cert.Thumbprint)
         } catch {
             Write-Error "Failed " +  $Error[0]
         }
@@ -848,6 +843,7 @@ function New-Application {
     Param(
         [Parameter(Mandatory)]
         [string] $AppName,
+        
         $API
     )
     Refresh_token
