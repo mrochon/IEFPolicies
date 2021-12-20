@@ -41,7 +41,7 @@ or use use [the IEF setup website](https://aka.ms/b2csetup/) or follow [instruct
 
 ## Use example
 
-The following script will deploy a new set of SocialAndLocalWithMFA starter pack, augmented with [a journey supporting sign in/up, profile edit and password reset in one RelyingParty](https://github.com/mrochon/b2csamples/tree/master/Policies/AllInOne). The uploaded
+The following script will deploy a new SocialAndLocalWithMFA starter pack, augmented with [a journey supporting sign in/up, profile edit and password reset in one RelyingParty](https://github.com/mrochon/b2csamples/tree/master/Policies/AllInOne). The uploaded
 policies will be named *B2C_1A_V1* unless the *V1* string is changed in the associated conf.json file.
 
 ```PowerShell
