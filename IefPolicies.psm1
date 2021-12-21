@@ -326,7 +326,7 @@ function Connect-IEFPolicies {
             $script:tenantName = $tenant
         } else {
             $script:tenantName = "{0}.onmicrosoft.com" -f $tenant
-        }
+        } 
     }
     $hdrs = @{
         'Content-Type' = "application/x-www-form-urlencoded"
@@ -334,10 +334,13 @@ function Connect-IEFPolicies {
     if ($clientId) {
         $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $script:tenantName
         $body = "client_id={0}&client_secret={1}&scope=https%3A%2F%2Fgraph.microsoft.com%2F.default&grant_type=client_credentials" -f $clientId, $clientSecret
-        $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
-        $script:tokens = $resp.Content | ConvertFrom-Json
-        $script:token_expiry = (Get-Date).AddSeconds($script:tokens.expires_in)
-        "Authorization completed"
+        $resp = Invoke-RestMethod -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body -SkipHttpErrorCheck -StatusCodeVariable statusCode
+        if (200 -eq $statusCode) {
+            setupEnvironment $resp
+        } else {
+            Write-Error $resp
+            throw
+        }
     } else {
         $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/devicecode" -f $script:tenantName
         if ($allowInit) {
@@ -356,49 +359,18 @@ function Connect-IEFPolicies {
         if(-not $env:TERM_PROGRAM -eq 'vscode') {        
             Start-Process "chrome.exe" $codeResp.verification_uri
         }
-        $completed = $false
+
+        $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $script:tenantName
+        $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=device_code&device_code={0}" -f $codeResp.device_code
         for($iter = 1; $iter -le ($codeResp.expires_in / $codeResp.interval); $iter++) {
             Start-Sleep -Seconds $codeResp.interval
-            try {
-                $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $script:tenantName
-                $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=device_code&device_code={0}" -f $codeResp.device_code
-                $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
-                $completed = $true
-                $script:tokens = $resp.Content | ConvertFrom-Json
-                $script:token_expiry = (Get-Date).AddSeconds($script:tokens.expires_in)
-                Write-Host "Authorization completed"
-                $headers = @{
-                    'Content-Type' = 'application/json';
-                    'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
-                }
-                $domains = Invoke-RestMethod -UseBasicParsing  -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
-                $script:b2cDomain = $domains.value[0].id
-                $script:b2cName = $script:b2cDomain.Split('.')[0]
-                Write-Host ("Logged in to {0}." -f $script:b2cName)
-                try {
-                    $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
-                    $iefRes = $resp.value[0]
-                    $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'ProxyIdentityExperienceFramework')" -Method Get -Headers $headers
-                    $iefProxy = $resp.value[0]
-                    if ($null -eq $iefRes -or
-                        $null -eq $iefProxy) {
-                        throw
-                    }
-                } catch {
-                    Write-Error "Your tenant is NOT setup for using IEF. Please execute Initialize-IefPolicies to set it up"
-                }  
-
-                try {
-                    $resp = Invoke-RestMethod -UseBasicParsing -Uri ('https://login.microsoftonline.com/{0}.onmicrosoft.com/v2.0/.well-known/openid-configuration' -f $script:b2cName) -Method Get -Headers $headers
-                    $script:tenantId = $resp.token_endpoint.Split('/')[3]
-                }  catch {
-                    Write-Error "Failed to get tenantid from .well-known"
-                }             
+            $resp = Invoke-RestMethod -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body -SkipHttpErrorCheck -StatusCodeVariable statusCode
+            if (200 -eq $statusCode) {
+                Write-Host "Got 200"
+                setupEnvironment $resp
                 break
-            } catch {
-                if ($completed) { return }
-                Write-Host "Waiting..."
             }
+            Write-Host "Waiting..."
         } 
     }
 }
@@ -760,48 +732,49 @@ function New-IefPoliciesCert {
         }
         $certSubject = ("CN={0}.{1}" -f $keyName, $script:b2cDomain)
         Write-Host ("Creating X509 cert {0}" -f $certSubject)
-        $cert = New-SelfSignedCertificate `
-            -KeyExportPolicy Exportable `
-            -Subject ($certSubject) `
-            -KeyAlgorithm RSA `
-            -KeyLength 2048 `
-            -KeyUsage DigitalSignature `
-            -NotBefore (Get-Date).AddMonths($startValidInMonth) `
-            -NotAfter (Get-Date).AddMonths($startValidInMonth+12) `
-            -CertStoreLocation "Cert:\CurrentUser\My"
-        [string]$pfxPwdPlain = Get-Random
-        $pfxPwd = ConvertTo-SecureString -String $pfxPwdPlain -Force -AsPlainText
-        $pfxPath = ".\RESTClientCert.pfx"
-        $cert | Export-PfxCertificate -FilePath $pfxPath -Password $pfxPwd
-        $pkcs12=[Convert]::ToBase64String([System.IO.File]::ReadAllBytes((get-childitem -path $pfxPath).FullName))
-        #try {
-        #    $key = Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}" -f $keyName) -Method Delete -Headers $headers
-        #} catch { 
-        #    # ok if does not exist
-        #}
+        try {
+            $cert = New-SelfSignedCertificate `
+                -KeyExportPolicy Exportable `
+                -Subject ($certSubject) `
+                -KeyAlgorithm RSA `
+                -KeyLength 2048 `
+                -KeyUsage DigitalSignature `
+                -NotBefore (Get-Date).AddMonths($startValidInMonth) `
+                -NotAfter (Get-Date).AddMonths($startValidInMonth+12) `
+                -CertStoreLocation "Cert:\CurrentUser\My"
+            [string]$pfxPwdPlain = Get-Random
+            $pfxPwd = ConvertTo-SecureString -String $pfxPwdPlain -Force -AsPlainText
+            $pfxPath = ".\RESTClientCert.pfx"
+            $cert | Export-PfxCertificate -FilePath $pfxPath -Password $pfxPwd
+            $pkcs12=[Convert]::ToBase64String([System.IO.File]::ReadAllBytes((get-childitem -path $pfxPath).FullName))
+        } catch {
+            Write-Error "Error creating/writing or reading the cert."
+            throw
+        }
         $body = @{
             id = $keyName
         }
-        try {
-            $keyset = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/trustFramework/keySets" -Method Post -Headers $headers -Body (ConvertTo-Json $body) -SkipHttpErrorCheck
-            if(($null -ne $keyset.error) -and ($keyset.error.code -eq 'AADB2C95028')) {
-                Write-Host "Adding cert to an existing keyset"
-                $keySetId = "B2C_1A_{0}" -f $keyName
-            } else {
-                Write-Host ("Keyset {0} created"  -f $keySetid)              
-                $keySetId = $keyset.id
-            }
-            $url = ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}/uploadPkcs12" -f $keySetId)
-            $body = @{
-                key = $pkcs12
-                password = $pfxPwdPlain
-            }
-            $key = Invoke-RestMethod -Uri $url -Method Post -Headers $headers -Body (ConvertTo-Json $body)
-            Write-Host ("Certificate created and uploaded" -f $certSubject)
-            Write-Host ("Thumbprint: {0}" -f $cert.Thumbprint)
-        } catch {
-            Write-Error "Failed " +  $Error[0]
+        $keyset = Invoke-RestMethod -Uri "https://graph.microsoft.com/beta/trustFramework/keySets" -Method Post -Headers $headers -Body (ConvertTo-Json $body) -SkipHttpErrorCheck -StatusCodeVariable httpStatus
+        if (403 -eq $httpStatus) {
+            Write-Error $keyset.error
+            throw
         }
+        if(($null -ne $keyset.error) -and ($keyset.error.code -eq 'AADB2C95028')) {
+            Write-Host "Adding cert to an existing keyset"
+            $keySetId = "B2C_1A_{0}" -f $keyName
+        } else {
+            Write-Host ("Keyset {0} created" -f $keySetid)              
+            $keySetId = $keyset.id
+        }
+        $url = ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}/uploadPkcs12" -f $keySetId)
+        $body = @{
+            key = $pkcs12
+            password = $pfxPwdPlain
+        }
+        Invoke-RestMethod -Uri $url -Method Post -Headers $headers -Body (ConvertTo-Json $body) -SkipHttpErrorCheck -StatusCodeVariable httpStatus
+        Write-Host ("Certificate created and uploaded" -f $certSubject)
+        Write-Host ("Thumbprint: {0}" -f $cert.Thumbprint)
+
         Remove-Item $pfxPath
 }
 
@@ -993,6 +966,39 @@ function New-IEFPoliciesKey {
             throw
         }
     }
+}
+function setupEnvironment() {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        $resp
+    ) 
+    $script:tokens = $resp
+    $script:token_expiry = (Get-Date).AddSeconds($script:tokens.expires_in)
+    Write-Host "Authorization completed. Setting up environment."
+    $headers = @{
+        'Content-Type' = 'application/json';
+        'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
+    }
+    $domains = Invoke-RestMethod -UseBasicParsing  -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
+    $script:b2cDomain = $domains.value[0].id
+    $script:b2cName = $script:b2cDomain.Split('.')[0]
+    Write-Host ("Logged in to {0}." -f $script:b2cName)
+    $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable httpCode1
+    $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'ProxyIdentityExperienceFramework')" -Method Get -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable httpCode2
+    if ((200 -ne $httpCode1) -or (200 -ne $httpCode2)) {
+        Write-Error "Your tenant is NOT setup for using IEF. Please execute Initialize-IefPolicies to set it up"
+        throw
+    }
+
+    try {
+        $resp = Invoke-RestMethod -UseBasicParsing -Uri ('https://login.microsoftonline.com/{0}.onmicrosoft.com/v2.0/.well-known/openid-configuration' -f $script:b2cName) -Method Get -Headers $headers
+        $script:tenantId = $resp.token_endpoint.Split('/')[3]
+    }  catch {
+        Write-Error "Failed to get tenantid from .well-known"
+        throw
+    }                 
 }
 function Refresh_token() {
     $limit_time = (Get-Date).AddMinutes(-5)

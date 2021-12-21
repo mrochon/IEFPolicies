@@ -87,6 +87,7 @@ able to consent to permissions to operate on the trust framework policies, read 
 2. Domain.Read.All
 3. Organization.Read.All
 4. Policy.ReadWrite.TrustFramework
+5. TrustFrameworkKeySet.ReadWrite.All (if module used to create policy keys or initialize the tenant)
 
 For interactive signin you do **not** need to regsiter an application. This module is already registered as a multi-tenant app.
 
