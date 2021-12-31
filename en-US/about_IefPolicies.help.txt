@@ -2,7 +2,7 @@ TOPIC
     about_IefPolicies
 
 SHORT DESCRIPTION
-    Provides functions to create and manage deployment of Azure b2C IEF Policies.
+    Provides functions to create and manage deployment of Azure B2C IEF Policies. Detailed description available at https://github.com/mrochon/IEFPolicies
  
 LONG DESCRIPTION
     Provides functions to manage IEF policy sets used for
@@ -26,10 +26,10 @@ LONG DESCRIPTION
 4. Policy.ReadWrite.TrustFramework
 
     This module exports the following functions:
+        Add-IefPoliciesSample
         Connect-IefPolicies
         Import-IEFPolicies
         Export-IEFPolicies
-        Add-IefPoliciesSample
         New-IefPolicies
         Remove-IefPolicies
         Add-IefPoliciesSample
@@ -42,7 +42,7 @@ LONG DESCRIPTION
  
 NOTES
     Author : Marius Rochon
-    Version : 2.2.11
+    Version : 3.0.2
  
 
 [PS] > New-IEFPolicies (you will be prompted for which starter pack to use)

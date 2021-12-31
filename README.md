@@ -25,6 +25,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 | 2.2.11   | New: Initialize-IefPolicies and Get-IefPoliciesAADCommon |
 | 3.0.0   | New: Requires PS 7.x. |
 |   | New: New function: New-IefPoliciesCert |
+| 3.0.2 | Update: New-iefPoliciesKey allows providing a value |
 
 
 ### Installation
@@ -54,6 +55,18 @@ Import-IefPolicies
 ```
 
 ## Cmdlets
+
+1. [Add-IEFPoliciesSample](https://github.com/mrochon/IEFPolicies#add-iefpoliciessample)
+2. [Connect-IEFPolicies](https://github.com/mrochon/IEFPolicies#connect-iefpolicies)
+3. [Export-IEFPolicies](https://github.com/mrochon/IEFPolicies#export-iefpolicies)
+4. [Get-IEFPoliciesAADCommon](https://github.com/mrochon/IEFPolicies#get-iefpoliciesaadcommon)
+5. [Import-IEFPolicies](https://github.com/mrochon/IEFPolicies#import-iefpolicies)
+6. [Initialize-IEFPolicies](https://github.com/mrochon/IEFPolicies#initialize-iefpolicies)
+7. [New-IEFPolicies](https://github.com/mrochon/IEFPolicies#new-iefpolicies)
+8. [New-IEFPoliciesCert](https://github.com/mrochon/IEFPolicies#new-iefpoliciescert)
+9. [New-IEFPoliciesKey](https://github.com/mrochon/IEFPolicies#new-iefpolicieskey)
+10. [Remove-IEFPolicies](https://github.com/mrochon/IEFPolicies#remove-iefpolicies)
+
 
 ### Add-IEFPoliciesSample
 
@@ -225,13 +238,17 @@ Creates a new key Policy Key secret.
 E.g.
 
 ```PowerShell
-New-IefPoliciesKey IEFPolicyKey 
+New-IefPoliciesKey AzureFuncKey -purpose sig -value "<Azure Function key value>" -validityInMonths 12
 ```
 
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
 | name | Y | key name |
 | purpose | N | Purpose (default: *sig*; *enc*) |
+| keyType | N | Key type (default: *rsa*; *oct*) |
+| value | N | Secret, will be generated if not provided |
+| startValidityInMonths | N | Valid from: number of months from now (default: 0) |
+| validityInMonths | N | Validity period from valid from date (default: 12) |
 
 ### Remove-IEFPolicies
 
@@ -240,7 +257,7 @@ Delete a set of policies, whose name starts with the specified prefix from the t
 For example, the following deletes all policies whose name starts with B2C_1A_V1. User confirmation will be requested before these policies are deleted.
 
 ```PowerShell
-Delete-IefPolicies V1
+Remove-IefPolicies V1
 ```
 
 | Property name | Required | Purpose |
