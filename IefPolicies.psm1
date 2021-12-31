@@ -938,6 +938,9 @@ function New-IEFPoliciesKey {
     .PARAMETER purpose
     Key purpose (sig or enc)
 
+    .PARAMETER value
+    Key purpose (sig or enc)
+
     .NOTES
     Please use connect-iefpolicies -tenant <tanant Name> before executing this command
     #>
@@ -948,25 +951,55 @@ function New-IEFPoliciesKey {
         [string]$name,
 
         [ValidateNotNullOrEmpty()]
-        [string]$purpose = "sig")
+        [string]$purpose = "sig",
+
+        [ValidateNotNullOrEmpty()]
+        [string]$keyType = "rsa",
+        
+        [ValidateNotNullOrEmpty()]
+        [string]$value,
+
+        [ValidateNotNullOrEmpty()]
+        [int]$validityInMonths = 12,    
+        
+        [ValidateNotNullOrEmpty()]
+        [int]$startValidityInMonths = 0
+        )        
 
     Refresh_token
     $headers = @{
         'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
         'Content-Type' = "application/json";        
     }
-    try {
-        $keyset = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/B2C_1A_{0}" -f $name) -Method GET -Headers $headers
-    } catch {
-        try {
-            $keyset = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/trustFramework/keySets" -Method POST -Headers $headers -Body (@{ id = $name} | ConvertTo-Json)
-            $keyset = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}/generateKey" -f $keyset.id) -Method POST -Headers $headers -Body (@{ use = $purpose; kty = "RSA" } | ConvertTo-Json)
-            Write-Host ("{0} generated" -f $name)
-        } catch {
-            throw
-        }
+    $keyset = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/trustFramework/keySets" -Method POST -Headers $headers -Body (@{ id = $name} | ConvertTo-Json) -SkipHttpErrorCheck -StatusCodeVariable httpStatus
+    if (403 -eq $httpStatus) {
+        Write-Error $keyset.error
+        throw
+    }
+    if(($null -ne $keyset.error) -and ($keyset.error.code -eq 'AADB2C95028')) {
+        $keySetId = ("B2C_1A_{0}" -f $name)
+        Write-Host ("Adding key to an existing keyset {0}." -f $keySetId)        
+    } else {
+        $keySetId = $keyset.id        
+        Write-Host ("Created keyset {0}" -f $keySetid)              
+    }
+    $exp = [math]::Round((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date).AddMonths($startValidityInMonths+$validityInMonths)).TotalSeconds)
+    $nbf = [math]::Round((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date).AddMonths($startValidityInMonths)).TotalSeconds)
+
+    if($null -eq $value) {
+        $keyset = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}/generateKey" -f $keySetId) `
+            -Method Post -Headers $headers -Body (@{ use = $purpose; kty = $keyType; nbf = $nbf ; exp = $exp} | ConvertTo-Json)  -SkipHttpErrorCheck -StatusCodeVariable httpStatus
+    } else {
+        $keyset = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}/uploadSecret" -f $keySetId) `
+            -Method Post -Headers $headers -Body (@{ use = $purpose; k = $value; nbf = $nbf ; exp = $exp} | ConvertTo-Json)  -SkipHttpErrorCheck -StatusCodeVariable httpStatus        
+    }
+    if(200 -eq $httpStatus) {
+        Write-Host ("{0} created/updated" -f $name)
+    } else {
+        Write-Error $keyset.error
     }
 }
+
 function setupEnvironment() {
     [CmdletBinding()]
     param(
