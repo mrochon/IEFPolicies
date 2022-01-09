@@ -33,10 +33,10 @@
         [string]$sourceDirectory = '.\',
 
         [ValidateNotNullOrEmpty()]
-        [string]$configurationFilePath = '.\conf.json',
+        [string]$updatedSourceDirectory = '.\debug\',
 
         [ValidateNotNullOrEmpty()]
-        [string]$updatedSourceDirectory = '.\debug\',
+        [string]$configurationFilePath,
 
         [ValidateNotNullOrEmpty()]
         [string]$prefix,
@@ -138,6 +138,29 @@
         }
     }
   
+    if($null -eq $script:tokens) {
+        throw "Please use Connect-IefPolicies -tenant <name> to login first"
+        return
+    }
+    Refresh_token
+
+    $headers = @{
+        'Content-Type' = 'application/json';
+        'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
+    }
+    $headersXml = @{
+    'Content-Type' = 'application/xml';
+    'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
+    }
+
+    if ([string]::IsNullOrEmpty($configurationFilePath)) {
+        $configurationFilePath = (".\{0}.json" -f $script:b2cName)
+        if(-not(Test-Path $configurationFilePath)){
+            $configurationFilePath = ".\conf.json"
+        }
+    }
+    Write-Host ("Configuration file: {0}" -f $configurationFilePath)
+
     if(Test-Path $configurationFilePath){
         try {
             $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
@@ -163,21 +186,6 @@
         }
     }
 
-    if($null -eq $script:tokens) {
-        throw "Please use Connect-IefPolicies -tenant <name> to login first"
-        return
-    }
-    Refresh_token
-
-    $headers = @{
-        'Content-Type' = 'application/json';
-        'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
-    }
-    $headersXml = @{
-    'Content-Type' = 'application/xml';
-    'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
-    }
-    
     try {
         $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers
         $iefRes = $resp.value[0]
