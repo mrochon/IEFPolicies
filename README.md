@@ -26,6 +26,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 | 3.0.0   | New: Requires PS 7.x. |
 |   | New: New function: New-IefPoliciesCert |
 | 3.0.2 | Update: New-iefPoliciesKey allows providing a value |
+| 3.0.3 | Update: Import-IefPolicies will first look for .\yourtenantname.conf before .\conf.json |
 
 
 ### Installation
@@ -179,7 +180,7 @@ Parameters:
 | -------- | ------ | ----- |
 | sourceDirectory | N | Directory path where your xml policies are stored (default: current directory) |
 | updatedSourceDirectory | N | Directory path where the policies updated by this script will be stored. Also used to prevent uploading unmodified policies. Default: ./debug/yourtenant subfolder. |
-| configurationFilePath | N | json file with additional replacement strings. Default: *.\conf.json*. The script will match any property in this file with a string with format *{<property name>}* and replace it with the value of the property. See above about a *secrets.json* file |
+| configurationFilePath | N | json file with additional replacement strings. Default: *.\b2cname>.json*, otherwise  *.\conf.json*. The script will match any property in this file with a string with format *{<property name>}* and replace it with the value of the property. See above about a *secrets.json* file |
 | generateOnly | N | If used, the script will only generate policy files but not upload them to B2C |
 | prefix | N | String inserted into the name of generated policies, e.g. the new base policy name will be *B2C_1A_XYZTrustFrameBase, where XYZ is the value of the provided prefix. Can also be set in the conf.json file |
 
