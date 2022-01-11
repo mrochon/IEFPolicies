@@ -26,7 +26,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 | 3.0.0   | New: Requires PS 7.x. |
 |   | New: New function: New-IefPoliciesCert |
 | 3.0.2 | Update: New-iefPoliciesKey allows providing a value |
-| 3.0.3 | Update: Import-IefPolicies will first look for .\yourtenantname.conf before .\conf.json |
+| 3.0.3 | Update: Import-IefPolicies will first look for .\yourtenantname.json before .\conf.json |
 
 
 ### Installation
