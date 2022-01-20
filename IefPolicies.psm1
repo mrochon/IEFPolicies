@@ -237,6 +237,9 @@ function Export-IEFPolicies {
     .PARAMETER destinationPath
     Directory where files should be downloaded to
 
+    .PARAMETER clean
+    Remove tenant specific values from the xml, replace with placeholders import-iefpolicies understands
+
     .EXAMPLE
         PS C:\> Export-IEFPolicies -prefix V10
 
@@ -250,10 +253,11 @@ function Export-IEFPolicies {
         #[Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$prefix,
-
         #[Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [string]$destinationPath
+        [string]$destinationPath,
+        [ValidateNotNullOrEmpty()]
+        [switch]$clean
     )
     if($null -eq $script:tokens) {
         throw "Please use Connect-IefPolicies -tenant <name> to login first"
@@ -266,8 +270,8 @@ function Export-IEFPolicies {
         'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
     $headersXml = @{
-    'Content-Type' = 'application/xml';
-    'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
+        'Content-Type' = 'application/xml';
+        'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
     if (-not $destinationPath) {
         $destinationPath = ".\"
@@ -277,12 +281,35 @@ function Export-IEFPolicies {
         $destinationPath = $destinationPath + '\' 
     }
 
+    $origPrefix = $prefix
     $prefix = "B2C_1A_" + $prefix
     $policies = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/trustFramework/policies/" -Method Get -Headers $headers
     foreach($policy in $policies.value | Where-Object {($_.id).startsWith($prefix)}) {
-        $fileName = "{0}\{1}.xml" -f $destinationPath, $policy.Id
         $policyXml = Invoke-WebRequest -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policy.id) -Method Get -Headers $headersXml
-        $policyXml.Content >> $fileName
+        $content = $policyXml.Content
+        if($clean) {
+            $content = $content.Replace($script:b2cName, "yourtenant")
+            $content = $content.Replace($prefix, "B2C_1A_")
+            $iefAppName = "IdentityExperienceFramework"
+            $iefProxyAppName = "ProxyIdentityExperienceFramework"
+            $extApp = Get-Application "b2c-extensions-app. Do not modify. Used by AADB2C for storing user data."
+            $iefApp = Get-Application $iefAppname
+            $iefProxyApp = Get-Application $iefProxyAppName         
+            $content = $content.Replace($iefApp.appId, ("{0}AppId" -f $iefAppName))         
+            $content = $content.Replace($iefProxyApp.appId, ("{0}AppId" -f $iefProxyAppName))   
+            $content = $content.Replace($extApp.id, "ExtObjectId")  
+            $content = $content.Replace($extApp.appId, "ExtAppId")  
+            $conf = @{
+                Prefix = $origPrefix
+                ExtAppId = $extApp.appId
+                ExtObjectId = $extApp.id
+                SomeProperty = "Use {SomeProperty} in your xml to have it replaced by this value"
+            }
+            $conf | ConvertTo-Json | Out-File -FilePath ($destinationPath + "conf.json")                          
+        }
+        $fileName = "{0}\{1}.xml" -f $destinationPath, $policy.Id
+        $fileName = $fileName.Replace($prefix, "B2C_1A_")
+        $content >> $fileName
         #Get-AzureADMSTrustFrameworkPolicy -Id $policy.Id >> $fileName
     }  
 }

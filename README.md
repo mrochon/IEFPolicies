@@ -27,6 +27,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 |   | New: New function: New-IefPoliciesCert |
 | 3.0.2 | Update: New-iefPoliciesKey allows providing a value |
 | 3.0.3 | Update: Import-IefPolicies will first look for .\yourtenantname.json before .\conf.json |
+| 3.0.4 | Update: Export-IefPolicies -clean option modifies downloaded files to startpack-like content |
 
 
 ### Installation
@@ -123,17 +124,26 @@ Connect-IefPolicies -tenant myTenant -clientId "registered app id" -clientSecret
 
 Use *Export-IEFPolicies* function to download your IEF policies from the B2C tenant to a local folder.
 
-E.g.
+E.g. download policies using V1 profix ('B2C_1A_V1...') to current folder and remove tenant-specific identifiers (IEF App ids, etc.) from the xml.
 
 ```PowerShell
-$dest = 'C:\LocalAccounts\policies'
-Export-IEFPolicies  -destinationPath $dest  `
+cd C:\LocalAccounts\policies
+Export-IEFPolicies V1 -clean  `
 ```
 
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
+| prefix | Y | Download policies whose name starts with *"B2C_1A_prefix"* |
 | destinationPath | N | Directory path where your xml policies are stored. Must already exist |
-| prefix | N | Download only policies whose name starts with *"B2C_1A_prefix"* |
+| clean | N | Modify xml to make it tenant independant, remove tenant-specific ids |
+
+**Note:** when using the *-clean* option, this command will attempt to make the contents of the xml files similar to what you see in the [B2C starter packs](https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack). It will:
+1. replace all occurrences of the B2C tenant name (the first part of the abc.onmicrosoft.com) url with *yourtenant* literal
+2. replace all occurrences of the application ids of the IdentityExperienceFramework and ProxyIdentityExpereinceFramework with that name suffixed with *AppId*
+3. replace all occurences of the *B2C extensions app* app id and object id with *{ExtAppId}* and *{ExtObjectId}*
+4. create a *conf.json* file with the prefix setting and settings for *ExtAppId* and *ExtObjectId*
+
+If you now *connect-iefpolicies* to a different B2C tenant, you should be immediately able to upload these files to that tenant (if the policies are using the *b2c extensions app*, you will need to set correct values in the *conf.json* file)
 
 ### Get-IEFPoliciesAADCommon
 
