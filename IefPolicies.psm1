@@ -96,6 +96,8 @@
                 $policy = $policy -replace "ProxyIdentityExperienceFrameworkAppId", $iefProxy.appId
                 $policy = $policy -replace "IdentityExperienceFrameworkAppId", $iefRes.appId
                 $policy = $policy -replace "{tenantId}", $script:tenantId
+                $policy = $policy -replace "{ExtAppId}", $extApp.appId     
+                $policy = $policy -replace "{ExtObjectId}", $extApp.id                                         
                 $policy = $policy.Replace('PolicyId="B2C_1A_', 'PolicyId="B2C_1A_{0}' -f $prefix)
                 $policy = $policy.Replace('/B2C_1A_', '/B2C_1A_{0}' -f $prefix)
                 $policy = $policy.Replace('<PolicyId>B2C_1A_', '<PolicyId>B2C_1A_{0}' -f $prefix)
@@ -194,6 +196,8 @@
     } catch {
         throw "Please ensure your B2C tenant is setup for using IEF (https://aka.ms/b2csetup)"
     }
+    $extApp = Get-Application "b2c-extensions-app. Do not modify. Used by AADB2C for storing user data."
+    Write-Host 
 
     # load originals
     $files = Get-Childitem -Path $sourceDirectory -Filter '*.xml'
@@ -297,12 +301,10 @@ function Export-IEFPolicies {
             $iefProxyApp = Get-Application $iefProxyAppName         
             $content = $content.Replace($iefApp.appId, ("{0}AppId" -f $iefAppName))         
             $content = $content.Replace($iefProxyApp.appId, ("{0}AppId" -f $iefProxyAppName))   
-            $content = $content.Replace($extApp.id, "ExtObjectId")  
-            $content = $content.Replace($extApp.appId, "ExtAppId")  
+            $content = $content.Replace($extApp.id, "{ExtObjectId}")  
+            $content = $content.Replace($extApp.appId, "{ExtAppId}")  
             $conf = @{
                 Prefix = $origPrefix
-                ExtAppId = $extApp.appId
-                ExtObjectId = $extApp.id
                 SomeProperty = "Use {SomeProperty} in your xml to have it replaced by this value"
             }
             $conf | ConvertTo-Json | Out-File -FilePath ($destinationPath + "conf.json")                          

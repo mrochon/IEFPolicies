@@ -28,6 +28,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 | 3.0.2 | Update: New-iefPoliciesKey allows providing a value |
 | 3.0.3 | Update: Import-IefPolicies will first look for .\yourtenantname.json before .\conf.json |
 | 3.0.4 | Update: Export-IefPolicies -clean option modifies downloaded files to startpack-like content |
+|  | Update: Import-IefPolicies will replace *{ExtAppId}* and *{ExtObjectId}* strings with the correct *B2C extensions app* values |
 
 
 ### Installation
@@ -137,13 +138,13 @@ Export-IEFPolicies V1 -clean  `
 | destinationPath | N | Directory path where your xml policies are stored. Must already exist |
 | clean | N | Modify xml to make it tenant independant, remove tenant-specific ids |
 
-**Note:** when using the *-clean* option, this command will attempt to make the contents of the xml files similar to what you see in the [B2C starter packs](https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack). It will:
+**Note:** when using the *-clean* option, this command will attempt to make the contents of the policy files tenant neutral, as similar to what you see in the [B2C starter packs](https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack) as possible. In particular, it will:
 1. replace all occurrences of the B2C tenant name (the first part of the abc.onmicrosoft.com) url with *yourtenant* literal
 2. replace all occurrences of the application ids of the IdentityExperienceFramework and ProxyIdentityExpereinceFramework with that name suffixed with *AppId*
 3. replace all occurences of the *B2C extensions app* app id and object id with *{ExtAppId}* and *{ExtObjectId}*
-4. create a *conf.json* file with the prefix setting and settings for *ExtAppId* and *ExtObjectId*
+4. create a *conf.json* file with the prefix setting
 
-If you now *connect-iefpolicies* to a different B2C tenant, you should be immediately able to upload these files to that tenant (if the policies are using the *b2c extensions app*, you will need to set correct values in the *conf.json* file)
+You should be able to *connect-iefpolicies* to a different B2C tenant and *import-iefpolicies* to that tenant with no further changes. If there are tenant-specific url REST function references or policy key container name referneces these will need to be changed manually before uploading.
 
 ### Get-IEFPoliciesAADCommon
 
@@ -172,8 +173,8 @@ file defines values to be replaced in the original xml files. E.g.
     "MyRESTUrl": "https://mywebsite.com/users"
 }
 ```
-will cause this cmdlet to inject *V1* into names of all policies, i.e. *B2C_1A_TrustFrameworkBase* will become *B2C_1A_V1TrustFrameworkBase*, etc. and any occurrences of *{MyRESTUrl}* in your xml policies to be replaced with
-the above url. If the same folder contains a secrets.json file, the attributes it defines will be added to those in the above configuration file. That allows you to configure your *.gitignore* file to **not** upload your 
+will cause this cmdlet to inject *V1* into names of all policies, i.e. *B2C_1A_TrustFrameworkBase* will become *B2C_1A_V1TrustFrameworkBase*, etc. Any occurrences of *{ExtAppId}* and *{ExtObjectId}* will be replaced with the appId and objectId of the *B2C extensions app* present in every B2C tenant. Any occurrences of a string enclosed in curly braces, e.g. *{MyRESTUrl}* above, will replaced with
+the corresponding value (if present) in the *.json* file, e.g. above url (*https://mywebsite.com/users*). If the same folder contains a secrets.json file, the attributes it defines will be added to those in the above configuration file. That allows you to configure your *.gitignore* file to **not** upload your 
 secrets (e.g. AppInsights key used for journey debugging) to your repos.
 
 E.g.
