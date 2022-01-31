@@ -103,18 +103,9 @@
                 $policy = $policy.Replace('<PolicyId>B2C_1A_', '<PolicyId>B2C_1A_{0}' -f $prefix)
 
                 # replace other placeholders, e.g. {MyRest} with http://restfunc.com. Note replacement string must be in {}
-                if ($null -ne $conf) {
-                    $special = @('IdentityExperienceFrameworkAppId', 'ProxyIdentityExperienceFrameworkAppId', 'PolicyPrefix', 'tenantId')
-                    foreach($memb in Get-Member -InputObject $conf -MemberType NoteProperty) {
-                        if ($memb.MemberType -eq 'NoteProperty') {
-                            if ($special.Contains($memb.Name)) { 
-                                Write-Host ("{0} is a reserved replacement variable. It's value is determined by the signin context." -f $memb.Name)
-                                continue 
-                            }
-                            $repl = "{{{0}}}" -f $memb.Name
-                            $policy = $policy.Replace($repl, $memb.Definition.Split('=')[1])
-                        }
-                    }
+                foreach($memb in $confProperties.GetEnumerator()) {
+                    $repl = "{{{0}}}" -f $memb.Name
+                    $policy = $policy.Replace($repl, $memb.Value)
                 }
 
                 $policyId = $p.Id.Replace('_1A_', '_1A_{0}' -f $prefix)
@@ -136,6 +127,21 @@
                 } catch {
                     throw
                 }
+            }
+        }
+    }
+    function Flatten-Config([string]$prefix, [PSObject]$parent) {
+        foreach($p in Get-Member -InputObject $parent -MemberType NoteProperty) {
+            $v = $parent | Select -ExpandProperty $p.Name
+            if($prefix) {
+                $fullName = ("{0}:{1}" -f $prefix, $p.Name)
+            } else {
+                $fullName = $p.Name
+            }
+            if($v.GetType().Name -eq 'String') {
+                $confProperties.Add($fullName, $v )
+            } else {
+                Flatten-Config $fullName $v
             }
         }
     }
@@ -163,17 +169,17 @@
     }
     Write-Host ("Configuration file: {0}" -f $configurationFilePath)
 
+    $confProperties = @{}
     if(Test-Path $configurationFilePath){
         try {
             $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
             if (-not $prefix){ $prefix = $conf.Prefix }
+            Flatten-Config $null $conf
             $confDir = Split-Path -Path $configurationFilePath
             $secretsPath = "{0}/secrets.json" -f $confDir
             if(Test-Path $secretsPath) {
                 $secrets = Get-Content -Path $secretsPath | Out-String | ConvertFrom-Json
-                foreach($memb in Get-Member -InputObject $secrets -MemberType NoteProperty) {
-                    Add-Member -InputObject $conf -TypeName $memb.MemberType -NotePropertyName $memb.Name -NotePropertyValue ($memb.Definition.Split('=')[1])
-                }
+                Flatten-Config $null $secrets
             }
         } catch {
             Write-Error "Failed to parse configuration json file"
@@ -1084,3 +1090,339 @@ function Refresh_token() {
         Write-Host "Token refreshed"
     }
 }
+
+function Add-IEFPoliciesIdP {
+    <#
+    .SYNOPSIS
+    Add federated IdP as a token provider for this B2C
+    
+    .DESCRIPTION
+    Adds an appropriate technical profile to request tokens from another IdP. Adds this profile as a selectable exchange in any
+    existing journeys used by RelyingParties.
+    
+    .PARAMETER protocol
+    Token protocol to use with this IdP: OIDC (default), SAML
+    
+    .PARAMETER name
+    Name to use to reference this IdP in the policies (protocol name will be appended to this name)
+    
+    .PARAMETER sourceDirectory
+    Directory with current policies (defauly: .\)
+        
+    .PARAMETER updatedSourceDirectory
+    Directory where policy files with the new IdP will be created (default: .\federations\
+    
+    .PARAMETER federationPolicyFile
+    Xml policy file where the new technical profile will be created (defaults: TrustExtensionsFramework.xml)
+
+    .PARAMETER prefix
+    String injected into names of all uploaded policies
+
+    .PARAMETER configurationFilePath
+    Name of the configuration json file where IdP variable data will be defined (default: conf.json)
+    
+    #>
+    [CmdletBinding()]
+    param(
+        #[Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$protocol = 'OIDC',
+
+        [ValidateNotNullOrEmpty()]
+        [string]$Name = 'contoso',
+
+        [ValidateNotNullOrEmpty()]
+        [string]$sourceDirectoryPath = '.\',
+                
+        [ValidateNotNullOrEmpty()]
+        [string]$federationsPolicyFile = 'TrustFrameworkExtensions.xml',
+
+        [ValidateNotNullOrEmpty()]
+        [string]$updatedSourceDirectory = '.\federations\',
+
+        [ValidateNotNullOrEmpty()]
+        [string]$configurationFilePath = '.\conf.json'
+    )
+
+    if ($updatedSourceDirectory) {
+        $updatedSourceDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($updatedSourceDirectory)
+        if(!(Test-Path -Path $updatedSourceDirectory )){
+            New-Item -ItemType directory -Path $updatedSourceDirectory
+            Write-Host "Updated source folder created"
+        }
+        if (-not $updatedSourceDirectory.EndsWith("\")) {
+            $updatedSourceDirectory = $updatedSourceDirectory + "\"
+        }
+    }
+    if ([string]::IsNullOrEmpty($configurationFilePath)) {
+        $configurationFilePath = (".\{0}.json" -f $script:b2cName)
+    }
+    if(-not(Test-Path $configurationFilePath)){
+        $configurationFilePath = ".\conf.json"
+        Write-Host ("{0} configuration file created" -f $configurationFilePath)
+    } else {
+        $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
+        Write-Host ("Using {0} configuration file" -f $configurationFilePath)
+    }
+    if(-not(Test-Path $federationsPolicyFile)){
+        $federations = [xml] $policyString
+        Write-Host ("{0} file for federations created" -f $federationsPolicyFile)
+    } else {
+        $federations = [xml] (Get-Content -Path $federationsPolicyFile | Out-String)
+        Write-Host ("Loaded {0} federations file" -f $federationsPolicyFile)
+    }
+
+    # Get journeys requiring updates of federated providers
+    $files = Get-ChildItem -Path $sourceDirectory -Filter '*.xml'
+    $journeyList = @{}
+    $rpList = @{}
+    foreach($policyFile in $files) {
+        $policy = Get-Content $policyFile.FullName
+        try {
+            $xml = [xml] $policy
+            $id = $xml.TrustFrameworkPolicy.PolicyId
+            if ($null -eq $id) { continue }
+            # work out which journeys require updating for the new IdP
+            if($xml.TrustFrameworkPolicy.UserJourneys) {
+                foreach($j in $xml.TrustFrameworkPolicy.UserJourneys.ChildNodes) {
+                    foreach($s in $j.OrchestrationSteps.ChildNodes) {
+                        if(($s.Type -eq 'CombinedSignInAndSignUp') -or ($s.Type -eq 'ClaimsProviderSelection')) {
+                            $journeyList.Add($j.Id, @{ Type = $s.Type; Order = [int]$s.Order; Id = $j.Id })
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch {
+            Write-Warning ("{0}: {1}." -f $policyFile, $_)
+        }
+    }
+
+    # which RPs are they used in?
+    foreach($policyFile in $files) {
+        $policy = Get-Content $policyFile.FullName
+        try {
+            $xml = [xml] $policy
+            if($xml.TrustFrameworkPolicy.RelyingParty) {
+                $rp = $xml.TrustFrameworkPolicy.RelyingParty
+                if($journeyList.ContainsKey($rp.DefaultUserJourney.ReferenceId)) {
+                    $rpList.Add($policyFile.FullName, $journeyList.GetEnumerator().Where({ $_.Key -eq $rp.DefaultUserJourney.ReferenceId }, 'First').Value)
+                }
+            }
+        } catch {
+            Write-Warning ("{0} is not an XML file. Ignored." -f $policyFile)
+        }
+    }
+
+    # add technical profile
+    $tpId = ("{0}-{1}" -f $Name, $protocol.ToUpper())
+    $tpConf = @{ domainName = ("{0}.com" -f $Name); displayName = ("{0} employees" -f $Name); metadataUrl = "" }
+
+    switch($protocol.ToLower()) {
+        "oidc" {
+            $str = $oidcTP.Replace('Contoso-OpenIdConnect', $tpId)
+            $tpConf.Add("clientId", "")
+        }
+        "saml" {
+            $str = $samlIdpString.Replace('Constoso-SAML2', $tpId)
+        }
+    }
+    # inject IdP name as prefix for al properties that need to be replaced at load
+    $str = ($str -f $Name)
+    $node = $federations.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$str).FirstChild, $true)
+    $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
+    if(-not $federations.TrustFrameworkPolicy.ClaimsProviders.ChildNodes.Where({$_.DisplayName -eq 'Session Management'}, 'First')) {
+        $node = $federations.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$samlSessionString).FirstChild, $true)
+        $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
+    }
+    Add-Member -InputObject $conf -NotePropertyName $Name -NotePropertyValue $tpConf
+    $conf | ConvertTo-Json | Out-File -FilePath ("{0}/conf.json" -f $updatedSourceDirectory)
+
+    # add user journey steps
+    foreach($rp in $rpList.GetEnumerator()) {
+        $policy = Get-Content $rp.Key
+        $xml = [xml] $policy
+        if($xml.TrustFrameworkPolicy.UserJourneys.UserJourney) { 
+            $step = $xml.TrustFrameworkPolicy.UserJourneys.UserJourney.OrchestrationSteps.ChildNodes.Where({ ($_.Type -eq 'CombinedSignInAndSignUp') -or ($_.Type -eq 'ClaimsProviderSelection')}, 'First')
+            if($step) {
+                $selection = "<ClaimsProviderSelection TargetClaimsExchangeId=""{0}Exchange"" xmlns=""http://schemas.microsoft.com/online/cpim/schemas/2013/06"" />" -f $Name
+                $node = $xml.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$selection).FirstChild, $true)
+                $step.AppendChild($node)
+            }
+        } else {
+            $journeySteps = $rp.Value
+            $rpNode = $xml.TrustFrameworkPolicy.RelyingParty
+            if($journeySteps.Type -eq 'CombinedSignInAndSignUp') {
+                $steps = $combinedSignInAndSignup
+            } else {
+                $steps = $claimsProviderSelection
+            }
+            $steps = ($steps -f $journeySteps.Order, $Name, ($journeySteps.Order + 1), $tpId, $journeySteps.Id)     
+            $node = $xml.TrustFrameworkPolicy.OwnerDocument.ImportNode(([xml]$steps).FirstChild, $true)
+            $xml.TrustFrameworkPolicy.InsertBefore($node, $rpNode)
+        }
+        $rpFileName = (Split-Path -Path $rp.Key -Leaf)
+        $xml.Save(("{0}{1}" -f $updatedSourceDirectory, $rpFileName))
+        Write-Host ("{0} updated" -f $rpFileName)
+    }
+    $federations.Save(("{0}{1}" -f $updatedSourceDirectory, $federationsPolicyFile))
+    Write-Host $federationsPolicyFile + " file update"
+}
+
+$samlIdpString = @"
+<ClaimsProvider  xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+  <Domain>{{{0}}:domainName}</Domain>
+  <DisplayName>{{{0}:displayName}}</DisplayName>
+  <TechnicalProfiles>
+    <TechnicalProfile Id="Contoso-SAML2">
+      <DisplayName>{{{0}:displayName}}</DisplayName>
+      <Description>Login with your SAML identity provider account</Description>
+      <Protocol Name="SAML2"/>
+      <Metadata>
+        <Item Key="PartnerEntity">{{{0}:metadataUrl}}</Item>
+      </Metadata>
+      <CryptographicKeys>
+        <Key Id="SamlMessageSigning" StorageReferenceId="B2C_1A_{0}SAMLSigningCert"/>
+      </CryptographicKeys>
+      <OutputClaims>
+        <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="assertionSubjectName" />
+        <OutputClaim ClaimTypeReferenceId="givenName" PartnerClaimType="first_name" />
+        <OutputClaim ClaimTypeReferenceId="surname" PartnerClaimType="last_name" />
+        <OutputClaim ClaimTypeReferenceId="displayName" PartnerClaimType="http://schemas.microsoft.com/identity/claims/displayname" />
+        <OutputClaim ClaimTypeReferenceId="email"  />
+        <OutputClaim ClaimTypeReferenceId="identityProvider" DefaultValue="contoso.com" />
+        <OutputClaim ClaimTypeReferenceId="authenticationSource" DefaultValue="socialIdpAuthentication" />
+      </OutputClaims>
+      <OutputClaimsTransformations>
+        <OutputClaimsTransformation ReferenceId="CreateRandomUPNUserName"/>
+        <OutputClaimsTransformation ReferenceId="CreateUserPrincipalName"/>
+        <OutputClaimsTransformation ReferenceId="CreateAlternativeSecurityId"/>
+        <OutputClaimsTransformation ReferenceId="CreateSubjectClaimFromAlternativeSecurityId"/>
+      </OutputClaimsTransformations>
+      <UseTechnicalProfileForSessionManagement ReferenceId="SM-Saml-idp"/>
+    </TechnicalProfile>
+  </TechnicalProfiles>
+</ClaimsProvider>
+"@
+
+$oidcTP = @"
+<ClaimsProvider xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+  <Domain>{{{0}:domainName}}</Domain>
+  <DisplayName>{{{0}:displayName}}</DisplayName>
+  <TechnicalProfiles>
+    <TechnicalProfile Id="Contoso-OpenIdConnect">
+      <DisplayName>{{{0}:displayName}}</DisplayName>
+      <Description>Login with your {{{0}:displayName}} account</Description>
+      <Protocol Name="OpenIdConnect"/>
+      <Metadata>
+        <Item Key="METADATA">{{{0}:metadataUrl}}</Item>
+        <Item Key="client_id">{{{0}:clientId}}</Item>
+        <Item Key="response_types">code</Item>
+        <Item Key="scope">openid profile</Item>
+        <Item Key="response_mode">form_post</Item>
+        <Item Key="HttpBinding">POST</Item>
+        <Item Key="UsePolicyInRedirectUri">false</Item>
+      </Metadata>
+      <CryptographicKeys>
+        <Key Id="client_secret" StorageReferenceId="B2C_1A_{0}Secret"/>
+      </CryptographicKeys> 
+      <OutputClaims>
+        <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="oid"/>
+        <OutputClaim ClaimTypeReferenceId="tenantId" PartnerClaimType="tid"/>
+        <OutputClaim ClaimTypeReferenceId="givenName" PartnerClaimType="given_name" />
+        <OutputClaim ClaimTypeReferenceId="surName" PartnerClaimType="family_name" />
+        <OutputClaim ClaimTypeReferenceId="displayName" PartnerClaimType="name" />
+        <OutputClaim ClaimTypeReferenceId="email" PartnerClaimType="email" />
+        <OutputClaim ClaimTypeReferenceId="authenticationSource" DefaultValue="socialIdpAuthentication" AlwaysUseDefaultValue="true" />
+        <OutputClaim ClaimTypeReferenceId="identityProvider" PartnerClaimType="iss" />
+      </OutputClaims>
+      <OutputClaimsTransformations>
+        <OutputClaimsTransformation ReferenceId="CreateRandomUPNUserName"/>
+        <OutputClaimsTransformation ReferenceId="CreateUserPrincipalName"/>
+        <OutputClaimsTransformation ReferenceId="CreateAlternativeSecurityId"/>
+        <OutputClaimsTransformation ReferenceId="CreateSubjectClaimFromAlternativeSecurityId"/>
+      </OutputClaimsTransformations>
+      <UseTechnicalProfileForSessionManagement ReferenceId="SM-SocialLogin"/>
+    </TechnicalProfile>
+  </TechnicalProfiles>
+</ClaimsProvider>
+"@
+
+$samlSessionString = @"
+<ClaimsProvider xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+  <DisplayName>Session Management</DisplayName>
+  <TechnicalProfiles>
+    <TechnicalProfile Id="SM-Saml-idp">
+      <DisplayName>Session Management Provider</DisplayName>
+      <Protocol Name="Proprietary" Handler="Web.TPEngine.SSO.SamlSSOSessionProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null" />
+      <Metadata>
+        <Item Key="IncludeSessionIndex">false</Item>
+        <Item Key="RegisterServiceProviders">false</Item>
+      </Metadata>
+    </TechnicalProfile>
+  </TechnicalProfiles>
+</ClaimsProvider>
+"@
+
+$policyString = @"
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<TrustFrameworkPolicy
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06"
+  PolicySchemaVersion="0.3.0.0"
+  TenantId="yourtenant.onmicrosoft.com"
+  PolicyId="B2C_1A_Federations"
+  PublicPolicyUri="http://yourtenant.onmicrosoft.com/B2C_1A_Federations">
+
+  <BasePolicy>
+    <TenantId>yourtenant.onmicrosoft.com</TenantId>
+    <PolicyId>B2C_1A_TrustFrameworkLocalization</PolicyId>
+  </BasePolicy>
+
+  <ClaimsProviders>
+  </ClaimsProviders>
+
+</TrustFrameworkPolicy>
+"@
+
+$combinedSignInAndSignUp = @"
+<UserJourneys xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+    <UserJourney Id="{4}">
+        <OrchestrationSteps>
+            <OrchestrationStep Order="{0}" Type="CombinedSignInAndSignUp" ContentDefinitionReferenceId="api.signuporsignin">
+              <ClaimsProviderSelections>
+                <ClaimsProviderSelection TargetClaimsExchangeId="{1}Exchange" />
+              </ClaimsProviderSelections>
+            </OrchestrationStep>
+            <OrchestrationStep Order="{2}" Type="ClaimsExchange">
+              <ClaimsExchanges>
+                <ClaimsExchange Id="{1}Exchange" TechnicalProfileReferenceId="{3}" />
+              </ClaimsExchanges>
+            </OrchestrationStep>
+        </OrchestrationSteps>
+    </UserJourney>
+</UserJourneys>
+"@
+
+$claimsProviderSelection = @"
+<UserJourneys xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+    <UserJourney Id="{4}" xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+        <OrchestrationSteps>
+            <OrchestrationStep Order="{0}" Type="ClaimsProviderSelection" ContentDefinitionReferenceId="api.idpselections">
+              <ClaimsProviderSelections>
+                <ClaimsProviderSelection TargetClaimsExchangeId="{1}Exchange" />
+              </ClaimsProviderSelections>
+            </OrchestrationStep>
+            <OrchestrationStep Order="{2}" Type="ClaimsExchange">
+              <ClaimsExchanges>
+                <ClaimsExchange Id="{1}Exchange" TechnicalProfileReferenceId="{3}" />
+              </ClaimsExchanges>
+            </OrchestrationStep>
+        </OrchestrationSteps>
+    </UserJourney>
+</UserJourneys>
+"@
+
+
+

@@ -2,6 +2,10 @@
 
 ## General
 
+### Latest
+The latest 3.0.4.alpha version includes a new command for adding OIDC or SAML IdPs to an existing policy set.
+
+
 ### Purpose
 Aids in the development and deployment of the Azure B2C Identity Experience Policy (IEF) xml files. Provides cmdlets to initiate a
 new policy set from the starter packs, merge community and other samples into the set, deploy to B2C with no need for deployment-specific source changes. Also, includes commands for
@@ -29,6 +33,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 | 3.0.3 | Update: Import-IefPolicies will first look for .\yourtenantname.json before .\conf.json |
 | 3.0.4 | Update: Export-IefPolicies -clean option modifies downloaded files to startpack-like content |
 |  | Update: Import-IefPolicies will replace *{ExtAppId}* and *{ExtObjectId}* strings with the correct *B2C extensions app* values |
+|  | New: Add-IefPoliciesIdP adds a SAMl or OIDC IdP to an existing policy set and updates journey definitions with the new exchange |
 
 
 ### Installation
@@ -60,6 +65,7 @@ Import-IefPolicies
 ## Cmdlets
 
 1. [Add-IEFPoliciesSample](https://github.com/mrochon/IEFPolicies#add-iefpoliciessample)
+1. [Add-IEFPoliciesIdP](https://github.com/mrochon/IEFPolicies#add-iefpoliciesidp)
 2. [Connect-IEFPolicies](https://github.com/mrochon/IEFPolicies#connect-iefpolicies)
 3. [Export-IEFPolicies](https://github.com/mrochon/IEFPolicies#export-iefpolicies)
 4. [Get-IEFPoliciesAADCommon](https://github.com/mrochon/IEFPolicies#get-iefpoliciesaadcommon)
@@ -92,6 +98,30 @@ Parameters:
 | destinationPath | N | Directory to download the files to. Current directory by default. |
 | owner | N | Git repo owner (default: Azure-ad-b2) |
 | repository | N | Repo name (default: samples). IEF policies must be in a *policies* folder |
+
+### Add-IEFPoliciesIdP
+
+Adds a standard SAMl or OIDC IdP to an existing policy set and updates journeys to usereference it. The new policy xml files are created in a separate folder. You can then relace the existing policy files with the new ones.
+
+As part of the process, this command adds a new object to the configuration file with data that needs to be provided before the policies are imported
+
+The following command will add a new OIDC TechnicalProfile named *Contoso-OIDC* to the TrustFrameworkExtension.xml and add references to it to all journeys referenced by relying parties defined in this policy set. It will also extend the conf.json file with some additional settings (e.g. metadata url) to be used when importing these files to B2C. 
+
+```PowerShell
+cd 'c:\your directory with the IEF policies'
+Add-IEFPoliciesIdP OIDC Name Contoso
+```
+
+Parameters:
+
+| Property name | Required | Purpose |
+| -------- | ------ | ----- |
+| protocol | N | Protocol name: *OIDC* (default) or *SAML* |
+| Name | N | Configuration object name (default: Contoso) |
+| sourceDirectoryPath | N | Current policies source xml files |
+| updatedSourceDirectory | N | Directory where any new/updated files will be stored (default: ./federations) |
+| fedeationsPolicyFile | N | File name (may not exist) where new technical profile will be added (default: TrustFrameworkExtensions.xml) |
+| configurationFilePath | N | Variable configuration data file (default: ./conf.json) |
 
 ### Connect-IEFPolicies
 

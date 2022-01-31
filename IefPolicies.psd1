@@ -32,6 +32,7 @@ RequiredModules = @()
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
     'Add-IEFPoliciesSample'  
+    'Add-IEFPoliciesIdP'
     'Connect-IEFPolicies' 
     'Export-IEFPolicies'
     'Get-IefPoliciesAADCommon'    
@@ -47,7 +48,7 @@ FunctionsToExport = @(
 PrivateData = @{
 
     PSData = @{
-        #Prerelease = 'alpha'
+        Prerelease = 'alpha'
 
         # Tags applied to this module. These help with module discovery in online galleries.
         # Tags = @()
