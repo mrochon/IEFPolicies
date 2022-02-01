@@ -1147,15 +1147,12 @@ function Add-IEFPoliciesIdP {
     if ($updatedSourceDirectory) {
         $updatedSourceDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($updatedSourceDirectory)
         if(!(Test-Path -Path $updatedSourceDirectory )){
-            New-Item -ItemType directory -Path $updatedSourceDirectory
+            New-Item -ItemType directory -Path $updatedSourceDirectory | Out-Null
             Write-Host "Updated source folder created"
         }
         if (-not $updatedSourceDirectory.EndsWith("\")) {
             $updatedSourceDirectory = $updatedSourceDirectory + "\"
         }
-    }
-    if ([string]::IsNullOrEmpty($configurationFilePath)) {
-        $configurationFilePath = (".\{0}.json" -f $script:b2cName)
     }
     if(-not(Test-Path $configurationFilePath)){
         $configurationFilePath = ".\conf.json"
@@ -1169,8 +1166,8 @@ function Add-IEFPoliciesIdP {
         Write-Host ("{0} file for federations created" -f $federationsPolicyFile)
     } else {
         $federations = [xml] (Get-Content -Path $federationsPolicyFile | Out-String)
-        Write-Host ("Loaded {0} federations file" -f $federationsPolicyFile)
     }
+    Write-Host ("Using {0} for federation definitions" -f $federationsPolicyFile)
 
     # Get journeys requiring updates of federated providers
     $files = Get-ChildItem -Path $sourceDirectory -Filter '*.xml'
@@ -1194,7 +1191,11 @@ function Add-IEFPoliciesIdP {
                 }
             }
         } catch {
-            Write-Warning ("{0}: {1}." -f $policyFile, $_)
+            if($_.Exception.ErrorRecord.Exception.Message.StartsWith('Exception calling "Add" with')) {
+                continue;
+            } else {
+                Write-Warning ("{0}: {1}." -f $policyFile, $_)
+            }
         }
     }
 
@@ -1215,25 +1216,27 @@ function Add-IEFPoliciesIdP {
     }
 
     # add technical profile
-    $tpId = ("{0}-{1}" -f $Name, $protocol.ToUpper())
-    $tpConf = @{ domainName = ("{0}.com" -f $Name); displayName = ("{0} employees" -f $Name); metadataUrl = "" }
-
+    $tpConf = @{ domainName = ("{0}.com" -f $Name); displayName = ("{0} employees" -f $Name); metadataUrl = "https://metadata.com" }
     switch($protocol.ToLower()) {
         "oidc" {
-            $str = $oidcTP.Replace('Contoso-OpenIdConnect', $tpId)
-            $tpConf.Add("clientId", "")
+            $str = $oidcTP
+            $tpConf.Add("clientId", "123456")
+            $keyMsg = ("Ensure that the OAuth2 client secret is defined in a Policy Contaner named: B2C_1A_{0}OIDCSecret" -f $Name)
         }
         "saml" {
-            $str = $samlIdpString.Replace('Constoso-SAML2', $tpId)
+            $str = $samlIdpString
+            $keyMsg = ("Ensure that the SAML request signing key is defined in a Policy Contaner named: B2C_1A_{0}SAMLSigningCert" -f $Name)
         }
     }
     # inject IdP name as prefix for al properties that need to be replaced at load
+    $tpId = ("{0}-{1}" -f $Name, $protocol.ToUpper())
     $str = ($str -f $Name)
     $node = $federations.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$str).FirstChild, $true)
     $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
     if(-not $federations.TrustFrameworkPolicy.ClaimsProviders.ChildNodes.Where({$_.DisplayName -eq 'Session Management'}, 'First')) {
         $node = $federations.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$samlSessionString).FirstChild, $true)
-        $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
+        # prevents default output
+        $node = $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
     }
     Add-Member -InputObject $conf -NotePropertyName $Name -NotePropertyValue $tpConf
     $conf | ConvertTo-Json | Out-File -FilePath ("{0}/conf.json" -f $updatedSourceDirectory)
@@ -1243,11 +1246,21 @@ function Add-IEFPoliciesIdP {
         $policy = Get-Content $rp.Key
         $xml = [xml] $policy
         if($xml.TrustFrameworkPolicy.UserJourneys.UserJourney) { 
-            $step = $xml.TrustFrameworkPolicy.UserJourneys.UserJourney.OrchestrationSteps.ChildNodes.Where({ ($_.Type -eq 'CombinedSignInAndSignUp') -or ($_.Type -eq 'ClaimsProviderSelection')}, 'First')
-            if($step) {
-                $selection = "<ClaimsProviderSelection TargetClaimsExchangeId=""{0}Exchange"" xmlns=""http://schemas.microsoft.com/online/cpim/schemas/2013/06"" />" -f $Name
-                $node = $xml.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$selection).FirstChild, $true)
-                $step.AppendChild($node)
+            $addToClaimsExchange = $false
+            foreach($step in $xml.TrustFrameworkPolicy.UserJourneys.UserJourney.OrchestrationSteps.ChildNodes) {
+                if(($step.Type -eq 'CombinedSignInAndSignUp') -or ($step.Type -eq 'ClaimsProviderSelection')) {
+                    $selection = "<ClaimsProviderSelection TargetClaimsExchangeId=""{0}Exchange"" xmlns=""http://schemas.microsoft.com/online/cpim/schemas/2013/06"" />" -f $Name
+                    $node = $step.ClaimsProviderSelections.OwnerDocument.ImportNode(([xml]$selection).LastChild, $true)
+                    $node = $step.ClaimsProviderSelections.AppendChild($node)
+                    $addToClaimsExchange = $true
+                    continue
+                }
+                if($addToClaimsExchange) {
+                    $selection = "<ClaimsExchange Id=""{0}Exchange"" TechnicalProfileReferenceId=""{1}"" xmlns=""http://schemas.microsoft.com/online/cpim/schemas/2013/06"" />" -f $Name, $tpId
+                    $node = $step.ClaimsExchanges.OwnerDocument.ImportNode(([xml]$selection).LastChild, $true)
+                    $node = $step.ClaimsExchanges.AppendChild($node)                    
+                    break
+                }
             }
         } else {
             $journeySteps = $rp.Value
@@ -1266,15 +1279,17 @@ function Add-IEFPoliciesIdP {
         Write-Host ("{0} updated" -f $rpFileName)
     }
     $federations.Save(("{0}{1}" -f $updatedSourceDirectory, $federationsPolicyFile))
-    Write-Host $federationsPolicyFile + " file update"
+    Write-Host ("{0} updated" -f $federationsPolicyFile)
+    Write-Host ("Please review and update the {0} file" -f $configurationFilePath)
+    Write-Host $keyMsg
 }
 
 $samlIdpString = @"
 <ClaimsProvider  xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
-  <Domain>{{{0}}:domainName}</Domain>
+  <Domain>{{{0}:domainName}}</Domain>
   <DisplayName>{{{0}:displayName}}</DisplayName>
   <TechnicalProfiles>
-    <TechnicalProfile Id="Contoso-SAML2">
+    <TechnicalProfile Id="{0}-SAML">
       <DisplayName>{{{0}:displayName}}</DisplayName>
       <Description>Login with your SAML identity provider account</Description>
       <Protocol Name="SAML2"/>
@@ -1310,7 +1325,7 @@ $oidcTP = @"
   <Domain>{{{0}:domainName}}</Domain>
   <DisplayName>{{{0}:displayName}}</DisplayName>
   <TechnicalProfiles>
-    <TechnicalProfile Id="Contoso-OpenIdConnect">
+    <TechnicalProfile Id="{0}-OIDC">
       <DisplayName>{{{0}:displayName}}</DisplayName>
       <Description>Login with your {{{0}:displayName}} account</Description>
       <Protocol Name="OpenIdConnect"/>
@@ -1407,7 +1422,7 @@ $combinedSignInAndSignUp = @"
 
 $claimsProviderSelection = @"
 <UserJourneys xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
-    <UserJourney Id="{4}" xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+    <UserJourney Id="{4}">
         <OrchestrationSteps>
             <OrchestrationStep Order="{0}" Type="ClaimsProviderSelection" ContentDefinitionReferenceId="api.idpselections">
               <ClaimsProviderSelections>
