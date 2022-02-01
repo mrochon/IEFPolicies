@@ -68,7 +68,8 @@
                     }
                     $outFile = '{0}\{1}' -f $envUpdatedDir, $p.Source
                     if (Test-Path $outFile) {
-                        if (($p.LastWrite.Ticks -le (Get-Item $outFile).LastWriteTime.Ticks) -and -not $force) {
+                        $lastFileUpdate = (Get-Item $outFile).LastWriteTime.Ticks
+                        if (($p.LastWrite.Ticks -lt $lastFileUpdate) -and ($lastConfChange -lt $lastFileUpdate) -and -not $force) {
                             Write-Host ("{0}: is up to date" -f $p.Id)
                             try {
                                 Import-Children $p.Id $false
@@ -172,12 +173,17 @@
     $confProperties = @{}
     if(Test-Path $configurationFilePath){
         try {
+            $lastConfChange = (Get-Item $configurationFilePath).LastWriteTime.Ticks
             $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
             if (-not $prefix){ $prefix = $conf.Prefix }
             Format-Config $null $conf
             $confDir = Split-Path -Path $configurationFilePath
             $secretsPath = "{0}/secrets.json" -f $confDir
             if(Test-Path $secretsPath) {
+                $lastWrite = (Get-Item $secretsPath).LastWriteTime.Ticks
+                if($lastWrite -gt $lastConfChange) {
+                    $lastConfChange = $lastwrite
+                }
                 $secrets = Get-Content -Path $secretsPath | Out-String | ConvertFrom-Json
                 Format-Config $null $secrets
             }
