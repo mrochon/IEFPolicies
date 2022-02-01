@@ -4,7 +4,7 @@
 RootModule = 'IefPolicies.psm1'
 
 # Version number of this module.
-ModuleVersion = '3.0.4'
+ModuleVersion = '3.0.5'
 
 PowerShellVersion = '7.0'
 
@@ -48,7 +48,7 @@ FunctionsToExport = @(
 PrivateData = @{
 
     PSData = @{
-        Prerelease = 'alpha'
+        #Prerelease = 'alpha'
 
         # Tags applied to this module. These help with module discovery in online galleries.
         # Tags = @()

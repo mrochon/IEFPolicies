@@ -3,8 +3,8 @@
 ## General
 
 ### Latest
-The latest 3.0.4.alpha version includes a new command for adding OIDC or SAML IdPs to an existing policy set.
-
+The latest 3.0.5 version includes a new command for adding OIDC or SAML IdPs to an existing policy set.
+**Please [install PowerShell 7.x](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.2) to use this module - many of its commands will still work with older versions of PS BUT some will not at all and errors will not be reported correctly in commands that do work.**
 
 ### Purpose
 Aids in the development and deployment of the Azure B2C Identity Experience Policy (IEF) xml files. Provides cmdlets to initiate a
