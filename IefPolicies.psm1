@@ -1342,7 +1342,7 @@ $oidcTP = @"
         <Key Id="client_secret" StorageReferenceId="B2C_1A_{0}Secret"/>
       </CryptographicKeys> 
       <OutputClaims>
-        <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="sub"/>
+        <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="oid"/>
         <OutputClaim ClaimTypeReferenceId="tenantId" PartnerClaimType="tid"/>
         <OutputClaim ClaimTypeReferenceId="givenName" PartnerClaimType="given_name" />
         <OutputClaim ClaimTypeReferenceId="surName" PartnerClaimType="family_name" />
