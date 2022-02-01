@@ -109,7 +109,7 @@ The following command will add a new OIDC TechnicalProfile named *Contoso-OIDC* 
 
 ```PowerShell
 cd 'c:\your directory with the IEF policies'
-Add-IEFPoliciesIdP OIDC Name Contoso
+Add-IEFPoliciesIdP OIDC -Name Contoso
 ```
 
 Parameters:
