@@ -178,6 +178,8 @@ You should be able to *connect-iefpolicies* to a different B2C tenant and *impor
 
 ### Get-IEFPoliciesAADCommon
 
+*This command is no longer needed: Import-IefPolicies will automatically replace references to {ExtAppId} and {ExtObjectId} with the tenant's 'b2c extensions app'*
+
 Displays application and object ids of a special B2C extensions application. These values are needed if your policies [store or retrieve custom user attributes](https://docs.microsoft.com/en-us/azure/active-directory-b2c/user-flow-custom-attributes?pivots=b2c-custom-policy#azure-ad-b2c-extensions-app) as [for example in this sample](https://github.com/mrochon/b2csamples/tree/master/Policies/PersistCustomAttr)
 
 E.g.
