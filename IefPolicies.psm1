@@ -130,9 +130,9 @@
             }
         }
     }
-    function Flatten-Config([string]$prefix, [PSObject]$parent) {
+    function Format-Config([string]$prefix, [PSObject]$parent) {
         foreach($p in Get-Member -InputObject $parent -MemberType NoteProperty) {
-            $v = $parent | Select -ExpandProperty $p.Name
+            $v = $parent | Select-Object -ExpandProperty $p.Name
             if($prefix) {
                 $fullName = ("{0}:{1}" -f $prefix, $p.Name)
             } else {
@@ -141,7 +141,7 @@
             if($v.GetType().Name -eq 'String') {
                 $confProperties.Add($fullName, $v )
             } else {
-                Flatten-Config $fullName $v
+                Format-Config $fullName $v
             }
         }
     }
@@ -174,12 +174,12 @@
         try {
             $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
             if (-not $prefix){ $prefix = $conf.Prefix }
-            Flatten-Config $null $conf
+            Format-Config $null $conf
             $confDir = Split-Path -Path $configurationFilePath
             $secretsPath = "{0}/secrets.json" -f $confDir
             if(Test-Path $secretsPath) {
                 $secrets = Get-Content -Path $secretsPath | Out-String | ConvertFrom-Json
-                Flatten-Config $null $secrets
+                Format-Config $null $secrets
             }
         } catch {
             Write-Error "Failed to parse configuration json file"
@@ -913,12 +913,12 @@ function New-Application {
             }
         }
         try {
-            $resp = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/applications/{0}" -f $app.id) -Method PATCH -Headers $headers -Body ($apiProps | ConvertTo-Json -Depth 6)
+            Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/applications/{0}" -f $app.id) -Method PATCH -Headers $headers -Body ($apiProps | ConvertTo-Json -Depth 6) | Out-Null
             $app.identifierUris = $apiProps.identifierUris
             $app.web = $apiProps.web
             $app.api = $apiProps.api
         } catch {
-            throw
+            throw $_
         }
     } else {
         $body = @{
@@ -946,7 +946,7 @@ function New-Application {
         }
     }
     $sp = @{ appId = $app.appId; displayName = $Appname }
-    $resp = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/servicePrincipals" -f $app.id) -Method POST -Headers $headers -Body ($sp | ConvertTo-Json -Depth 6)
+    Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/servicePrincipals" -f $app.id) -Method POST -Headers $headers -Body ($sp | ConvertTo-Json -Depth 6) | Out-Null
     return $app
 }
 
