@@ -192,6 +192,7 @@ Parameters: none
 
 ### Import-IEFPolicies 
 
+#### Description
 Use *Import-IEFPolicies* function to upload your IEF policies to the B2C tenant you are currently signed into. 
 
 Before uploading, the cmdlet will modify your xml files and store the new versions in the directory identified by the
@@ -202,20 +203,31 @@ file defines values to be replaced in the original xml files. E.g.
 ```Json
 {
     "Prefix": "V1",
-    "MyRESTUrl": "https://mywebsite.com/users"
+    "MyRESTUrl": "https://mywebsite.com/users",
+    "Contoso": {
+        "ClientId": "123"
+    }
 }
 ```
-will cause this cmdlet to inject *V1* into names of all policies, i.e. *B2C_1A_TrustFrameworkBase* will become *B2C_1A_V1TrustFrameworkBase*, etc. Any occurrences of *{ExtAppId}* and *{ExtObjectId}* will be replaced with the appId and objectId of the *B2C extensions app* present in every B2C tenant. Any occurrences of a string enclosed in curly braces, e.g. *{MyRESTUrl}* above, will replaced with
-the corresponding value (if present) in the *.json* file, e.g. above url (*https://mywebsite.com/users*). If the same folder contains a secrets.json file, the attributes it defines will be added to those in the above configuration file. That allows you to configure your *.gitignore* file to **not** upload your 
-secrets (e.g. AppInsights key used for journey debugging) to your repos.
+will cause this cmdlet to:
 
-E.g.
+1. inject *V1* into names of all policies, i.e. *B2C_1A_TrustFrameworkBase* will become *B2C_1A_V1TrustFrameworkBase*, etc. 
+2. Replace occurrences of *{ExtAppId}* and *{ExtObjectId}* in xml the appId and objectId of the *B2C extensions app* in this B2C tenant
+3. Replace all occurrences of a string enclosed in curly braces, e.g. *{MyRESTUrl}* above, with the corresponding value (if present) in the *.json* file, e.g. above url (*https://mywebsite.com/users*). 
+4. Replace occurrences of *{Contoso:ClientId}* with *123*
+
+If the same folder contains a secrets.json file, the attributes it defines will be added to those in the above configuration file. That allows you to configure your *.gitignore* file to **not** upload any confidential data 
+(e.g. AppInsights key used for journey debugging) to your repos.
+
+#### Example
 
 ```PowerShell
 Connect-IefPolicies -Tenant yourtenant
 cd 'c:\your directory with the IEF policies'
 Import-IEFPolicies 
 ```
+
+#### Parameters
 
 Parameters:
 
