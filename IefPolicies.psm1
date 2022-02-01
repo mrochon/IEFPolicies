@@ -1221,7 +1221,7 @@ function Add-IEFPoliciesIdP {
         "oidc" {
             $str = $oidcTP
             $tpConf.Add("clientId", "123456")
-            $keyMsg = ("Ensure that the OAuth2 client secret is defined in a Policy Contaner named: B2C_1A_{0}OIDCSecret" -f $Name)
+            $keyMsg = ("Ensure that the OAuth2 client secret is defined in a Policy Contaner named: B2C_1A_{0}OIDCSecret (key usage: sig)" -f $Name)
         }
         "saml" {
             $str = $samlIdpString
