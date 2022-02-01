@@ -1305,7 +1305,7 @@ $samlIdpString = @"
         <OutputClaim ClaimTypeReferenceId="surname" PartnerClaimType="last_name" />
         <OutputClaim ClaimTypeReferenceId="displayName" PartnerClaimType="http://schemas.microsoft.com/identity/claims/displayname" />
         <OutputClaim ClaimTypeReferenceId="email"  />
-        <OutputClaim ClaimTypeReferenceId="identityProvider" DefaultValue="contoso.com" />
+        <OutputClaim ClaimTypeReferenceId="identityProvider" DefaultValue="{{{0}:domainName}}" />
         <OutputClaim ClaimTypeReferenceId="authenticationSource" DefaultValue="socialIdpAuthentication" />
       </OutputClaims>
       <OutputClaimsTransformations>
@@ -1342,7 +1342,7 @@ $oidcTP = @"
         <Key Id="client_secret" StorageReferenceId="B2C_1A_{0}Secret"/>
       </CryptographicKeys> 
       <OutputClaims>
-        <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="oid"/>
+        <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="sub"/>
         <OutputClaim ClaimTypeReferenceId="tenantId" PartnerClaimType="tid"/>
         <OutputClaim ClaimTypeReferenceId="givenName" PartnerClaimType="given_name" />
         <OutputClaim ClaimTypeReferenceId="surName" PartnerClaimType="family_name" />
