@@ -31,9 +31,10 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 |   | New: New function: New-IefPoliciesCert |
 | 3.0.2 | Update: New-iefPoliciesKey allows providing a value |
 | 3.0.3 | Update: Import-IefPolicies will first look for .\yourtenantname.json before .\conf.json |
-| 3.0.4 | Update: Export-IefPolicies -clean option modifies downloaded files to startpack-like content |
+| 3.0.5 | Update: Export-IefPolicies -clean option modifies downloaded files to startpack-like content |
 |  | Update: Import-IefPolicies will replace *{ExtAppId}* and *{ExtObjectId}* strings with the correct *B2C extensions app* values |
 |  | New: Add-IefPoliciesIdP adds a SAMl or OIDC IdP to an existing policy set and updates journey definitions with the new exchange |
+| 3.0.6  | Change: import all policies if conf file changed since last upload |
 
 
 ### Installation
