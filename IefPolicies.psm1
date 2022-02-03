@@ -876,7 +876,8 @@ function New-Application {
         'Content-Type' = "application/json";        
     }
     $app = Get-Application $AppName
-    if ($null -ne $app) { return }
+    if ($null -ne $app) { return $app }
+    # openid perms
     $OIDCAccess = @{
         resourceAppId = "00000003-0000-0000-c000-000000000000";
         resourceAccess = @(
@@ -891,6 +892,7 @@ function New-Application {
         )
     } 
 
+    # if this is an API (not using other API, cannot in B2C anyway)
     if ($null -eq $API) {
         $body = @{
             displayName = $AppName;
@@ -900,6 +902,7 @@ function New-Application {
         try {
             $app = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/applications" -Method POST -Headers $headers -Body ($body | ConvertTo-Json -Depth 6)
         } catch {
+            Write-Error $_.ErrorDetails.Message
             throw
         }
         $apiProps = @{
@@ -928,7 +931,7 @@ function New-Application {
         } catch {
             throw $_
         }
-    } else {
+    } else { 
         $body = @{
             displayName = $AppName;
             signInAudience = "AzureADMyOrg";
