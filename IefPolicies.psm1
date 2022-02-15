@@ -486,13 +486,26 @@ param(
 
     $count = 0
     foreach ($file in $files) {
-        $fileDestination = Join-Path $destinationPath (Split-Path $file -Leaf)
+        $fileName = Split-Path $file -Leaf
+        $fileDestination = Join-Path $destinationPath $fileName
         try {
-            Invoke-WebRequest -UseBasicParsing  -Uri $file -OutFile $fileDestination -ErrorAction Stop -Verbose
-            "Downloaded '$($file)' to '$fileDestination'"
+            if("TrustFrameworkExtensions.xml" -eq $fileName) {
+                $ext = Invoke-RestMethod  -Uri $file -UseBasicParsing
+                # Seems like there is an extra character at start
+                $xml = [xml] $ext.Substring(1)
+                $node = $xml.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$AADCommon).DocumentElement, $true)
+                $xml.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
+                $dest = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($fileDestination)
+                # Save does not understand relative path
+                $xml.Save($dest)
+                Write-Warning "Added AAD-Common extensions app settings to TrustFrameworkExtensions.xml"
+            } else {
+                Invoke-WebRequest -UseBasicParsing  -Uri $file -OutFile $fileDestination -ErrorAction Stop -Verbose
+            }
+            Write-Host "Downloaded '$($file)' to '$fileDestination'"
             ++$count
         } catch {
-            throw "Unable to download '$($file.path)'"
+            throw ("Unable to download {0}: {1}" -f $file.path, $_)
         }
     }
     if ($count -gt 0) {
@@ -1448,6 +1461,22 @@ $claimsProviderSelection = @"
         </OrchestrationSteps>
     </UserJourney>
 </UserJourneys>
+"@
+
+$AADCommon = @"
+<!-- Added by new-IefPolicies. Use Import-IefPolicies to resolve" /-->
+<ClaimsProvider xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+    <DisplayName>Azure Active Directory</DisplayName>
+    <TechnicalProfiles>
+        <TechnicalProfile Id="AAD-Common">
+            <DisplayName>Azure Active Directory</DisplayName>
+            <Metadata>
+                <Item Key="ApplicationObjectId">{ExtObjectId}</Item>
+                <Item Key="ClientId">{ExtAppId}</Item>
+            </Metadata>
+        </TechnicalProfile>
+    </TechnicalProfiles>
+</ClaimsProvider>
 "@
 
 

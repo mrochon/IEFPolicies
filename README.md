@@ -35,6 +35,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 |  | Update: Import-IefPolicies will replace *{ExtAppId}* and *{ExtObjectId}* strings with the correct *B2C extensions app* values |
 |  | New: Add-IefPoliciesIdP adds a SAMl or OIDC IdP to an existing policy set and updates journey definitions with the new exchange |
 | 3.0.6  | Change: import all policies if conf file changed since last upload |
+| 3.1.0  | Change: import adds AAD-Common extensions app TP to Extensions.xml |
 
 
 ### Installation
@@ -260,7 +261,7 @@ Parameters:
 ### New-IEFPolicies
 
 Use *New-IEFPolicies* function to download a set of policies from the [Azure B2C StarterPack](https://github.com/Azure-Samples/active-directory-b2c-custom-policy-starterpack). The cmdlet will prompt you for which of the starter packs (local, social, etc.)
-to download.
+to download. A TechnicalProfile with references to teh b2C extension app (needed by persistent custom attributes) will be added to teh TrustFrameworkExtensions.xml.
 
 E.g.
 
