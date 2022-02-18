@@ -1308,6 +1308,101 @@ function Add-IEFPoliciesIdP {
     Write-Host $keyMsg
 }
 
+function Add-IEFPoliciesSamlSP {
+    <#
+    .SYNOPSIS
+    Provide SAML SSO
+    
+    .DESCRIPTION
+    Adds claims provider, RP and related artifacts to support SAML SSO
+    
+    .PARAMETER appName
+    Applications name (default: Contoso)
+    
+    .PARAMETER sourceDirectory
+    Directory with current policies (defauly: .\)
+        
+    .PARAMETER updatedSourceDirectory
+    Directory where policy files with the new IdP will be created (default: .\federations\
+    
+    .PARAMETER extensionsFile
+    Xml policy file where the new technical profile will be created (defaults: TrustExtensionsFramework.xml)
+
+    .PARAMETER prefix
+    String injected into names of all uploaded policies
+
+    .PARAMETER configurationFilePath
+    Name of the configuration json file where IdP variable data will be defined (default: conf.json)
+    
+    #>
+    [CmdletBinding()]
+    param(
+        [ValidateNotNullOrEmpty()]
+        [string]$appName = 'contoso',
+
+        [ValidateNotNullOrEmpty()]
+        [string]$sourceDirectoryPath = '.\',
+                
+        [ValidateNotNullOrEmpty()]
+        [string]$extensionsFile = 'TrustFrameworkExtensions.xml',
+
+        [ValidateNotNullOrEmpty()]
+        [string]$configurationFilePath = '.\conf.json'
+    )
+
+    if(-not(Test-Path $configurationFilePath)){
+        $configurationFilePath = ".\conf.json"
+        Write-Host ("{0} configuration file created" -f $configurationFilePath)
+    } else {
+        $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
+        Write-Host ("Using {0} configuration file" -f $configurationFilePath)
+    }
+
+    Refresh_token
+    $headers = @{
+        'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
+        'Content-Type' = "application/json";        
+    }
+    # Ensure there is a token signing cert
+    $keyName = ("B2C_1A_{0}SigningKey" -f $appName)
+    $keyset = Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}" -f $keyName) -Method Get -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable httpStatus
+    if (400 -eq $httpStatus) {
+        $keyset = New-IefPoliciesCert $keyName
+    }
+    # Add SAML Assertion Issuer
+    $extensions = [xml](Get-Content ($sourceDirectoryPath + $extensionsFile))
+    $tpName = ("{0}Saml2AssertionIssuer" -f $appName)
+    $exists = $false
+    foreach($cp in $extensions.TrustFrameworkPolicy.ClaimsProviders.ChildNodes) {
+        if($exists) { break }
+        foreach($tp in $cp.TechnicalProfiles.ChildNodes) {
+            if ($tp.Id -eq $tpName) {
+                $exists = $true
+                break
+            }
+        }
+    }
+    if($exists) {
+        Write-Warning ("{0} already exists. {1} will not be updated" -f $tpName, $extensionsFile)
+    } else {
+        $temp = $SAMLAssertionIssuer -f $appName
+        $node = $extensions.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$temp).FirstChild, $true)
+        $node = $extensions.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
+        $extensions.Save($sourceDirectoryPath + $extensionsFile)
+        Write-Host ("{0}SAMLAssertionIssuer TechnicalProfile added to {1}" -f $appName, $extensionsFile)
+    } 
+    # Add RP
+    $temp = $samlRP -f $appName
+    $rpFileName = ("{0}{1}SAML_SUSI.xml" -f $sourceDirectory, $appName)
+    $temp | Out-File -FilePath $rpFileName
+    Write-Host ("{0} added/replaced" -f $rpFileName)    
+    # Update conf file
+    $tpConf = @{ samlResponseIssuerUri = ("https://{0}/{1}" -f $script:b2cDomain, $appName) }
+    Add-Member -InputObject $conf -NotePropertyName $appName -NotePropertyValue $tpConf
+    $conf | ConvertTo-Json | Out-File -FilePath ("{0}conf.json" -f $sourceDirectoryPath)
+    Write-Host ("{0} updated" -f $configurationFilePath)
+}
+
 $samlIdpString = @"
 <ClaimsProvider  xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
   <Domain>{{{0}:domainName}}</Domain>
@@ -1479,5 +1574,78 @@ $AADCommon = @"
 </ClaimsProvider>
 "@
 
+$SAMLAssertionIssuer = @"
+<ClaimsProvider xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+  <DisplayName>Token Issuer</DisplayName>
+  <TechnicalProfiles>
 
+    <!-- SAML Token Issuer technical profile -->
+    <TechnicalProfile Id="{0}Saml2AssertionIssuer">
+      <DisplayName>Token Issuer</DisplayName>
+      <Protocol Name="SAML2"/>
+      <OutputTokenFormat>SAML2</OutputTokenFormat>
+      <Metadata>
+        <Item Key="IssuerUri">{{{0}:samlResponseIssuerUri}}</Item>
+      </Metadata>
+      <CryptographicKeys>
+        <Key Id="SamlAssertionSigning" StorageReferenceId="B2C_1A_{0}SigningKey"/>
+        <Key Id="SamlMessageSigning" StorageReferenceId="B2C_1A_{0}SigningKey"/>
+      </CryptographicKeys>
+      <InputClaims/>
+      <OutputClaims/>
+      <UseTechnicalProfileForSessionManagement ReferenceId="SM-Saml-issuer"/>
+    </TechnicalProfile>
+
+    <!-- Session management technical profile for SAML-based tokens -->
+    <TechnicalProfile Id="SM-Saml-issuer">
+      <DisplayName>Session Management Provider</DisplayName>
+      <Protocol Name="Proprietary" Handler="Web.TPEngine.SSO.SamlSSOSessionProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"/>
+    </TechnicalProfile>
+
+  </TechnicalProfiles>
+</ClaimsProvider>
+"@
+
+$samlRP = @"
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<TrustFrameworkPolicy
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06"
+  PolicySchemaVersion="0.3.0.0"
+  TenantId="yourtenant.onmicrosoft.com"
+  PolicyId="B2C_1A_SUSI_{0}_saml"
+  PublicPolicyUri="http://yourtenant.onmicrosoft.com/B2C_1A_SUSI_{0}_saml">
+
+  <BasePolicy>
+    <TenantId>yourtenant.onmicrosoft.com</TenantId>
+    <PolicyId>B2C_1A_TrustFrameworkExtensions</PolicyId>
+  </BasePolicy>
+
+  <UserJourneys>
+    <UserJourney Id="SignUpOrSignIn">
+      <OrchestrationSteps>
+        <OrchestrationStep Order="7" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="{0}Saml2AssertionIssuer"/>
+      </OrchestrationSteps>
+    </UserJourney>
+  </UserJourneys>
+
+  <RelyingParty>
+    <DefaultUserJourney ReferenceId="SignUpOrSignIn" />
+    <TechnicalProfile Id="PolicyProfile">
+      <DisplayName>PolicyProfile</DisplayName>
+      <Protocol Name="SAML2"/>
+      <OutputClaims>
+        <OutputClaim ClaimTypeReferenceId="displayName" />
+        <OutputClaim ClaimTypeReferenceId="givenName" />
+        <OutputClaim ClaimTypeReferenceId="surname" />
+        <OutputClaim ClaimTypeReferenceId="email" DefaultValue="" />
+        <OutputClaim ClaimTypeReferenceId="identityProvider" DefaultValue="" />
+        <OutputClaim ClaimTypeReferenceId="objectId" PartnerClaimType="objectId"/>
+      </OutputClaims>
+      <SubjectNamingInfo ClaimType="objectId" ExcludeAsClaim="true"/>
+    </TechnicalProfile>
+  </RelyingParty>
+</TrustFrameworkPolicy>
+"@
 
