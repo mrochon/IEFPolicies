@@ -1,0 +1,29 @@
+<ClaimsProvider xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+  <DisplayName>Token Issuer</DisplayName>
+  <TechnicalProfiles>
+
+    <!-- SAML Token Issuer technical profile -->
+    <TechnicalProfile Id="{0}AssertionIssuer">
+      <DisplayName>Token Issuer</DisplayName>
+      <Protocol Name="SAML2"/>
+      <OutputTokenFormat>SAML2</OutputTokenFormat>
+      <Metadata>
+        <Item Key="IssuerUri">{{{0}:samlResponseIssuerUri}}</Item>
+      </Metadata>
+      <CryptographicKeys>
+        <Key Id="SamlAssertionSigning" StorageReferenceId="B2C_1A_{0}SigningKey"/>
+        <Key Id="SamlMessageSigning" StorageReferenceId="B2C_1A_{0}SigningKey"/>
+      </CryptographicKeys>
+      <InputClaims/>
+      <OutputClaims/>
+      <UseTechnicalProfileForSessionManagement ReferenceId="SM-Saml-issuer"/>
+    </TechnicalProfile>
+
+    <!-- Session management technical profile for SAML-based tokens -->
+    <TechnicalProfile Id="SM-Saml-issuer">
+      <DisplayName>Session Management Provider</DisplayName>
+      <Protocol Name="Proprietary" Handler="Web.TPEngine.SSO.SamlSSOSessionProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"/>
+    </TechnicalProfile>
+
+  </TechnicalProfiles>
+</ClaimsProvider>

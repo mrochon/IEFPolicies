@@ -76,6 +76,7 @@ Import-IefPolicies
 7. [New-IEFPolicies](https://github.com/mrochon/IEFPolicies#new-iefpolicies)
 8. [New-IEFPoliciesCert](https://github.com/mrochon/IEFPolicies#new-iefpoliciescert)
 9. [New-IEFPoliciesKey](https://github.com/mrochon/IEFPolicies#new-iefpolicieskey)
+9. [New-IEFPoliciessamlRP](https://github.com/mrochon/IEFPolicies#new-iefpoliciessamlrp)
 10. [Remove-IEFPolicies](https://github.com/mrochon/IEFPolicies#remove-iefpolicies)
 
 
@@ -119,7 +120,7 @@ Parameters:
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
 | protocol | N | Protocol name: *OIDC* (default) or *SAML* |
-| Name | N | Configuration object name (default: Contoso) |
+| Name | Y | Issuer name |
 | sourceDirectoryPath | N | Current policies source xml files |
 | updatedSourceDirectory | N | Directory where any new/updated files will be stored (default: ./federations) |
 | fedeationsPolicyFile | N | File name (may not exist) where new technical profile will be added (default: TrustFrameworkExtensions.xml) |
@@ -308,11 +309,29 @@ New-IefPoliciesKey AzureFuncKey -purpose sig -value "<Azure Function key value>"
 | startValidityInMonths | N | Valid from: number of months from now (default: 0) |
 | validityInMonths | N | Validity period from valid from date (default: 12) |
 
+### New-IEFPoliciesSamlRp
+
+Creates a new Saml Relying Party endpoint
+
+E.g.
+
+```PowerShell
+New-IefPoliciessamlRp -issuerName Contoso
+```
+
+| Property name | Required | Purpose |
+| -------- | ------ | ----- |
+| issuerName | N | Used to name endpoint and associated Technicalprofile (default: SAML) |
+| sourceDirectory | N | Policy set source (default: ./) |
+| extensionFile | N | Policy file where to create the TechnicalProfile (default: TrustFrameworkExtensions,xml) |
+| configurationFilePath | N | Path for conf.json file (default: ./conf.json) |
+
+
 ### Remove-IEFPolicies
 
-Delete a set of policies, whose name starts with the specified prefix from the tenant
+Delete a set of policies, whose name starts with the specified prefix from the tenant. User connfirmation will be requested before files are deleted.
 
-For example, the following deletes all policies whose name starts with B2C_1A_V1. User confirmation will be requested before these policies are deleted.
+For example, the following deletes all policies whose name starts with B2C_1A_V1. 
 
 ```PowerShell
 Remove-IefPolicies V1

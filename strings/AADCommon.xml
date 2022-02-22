@@ -1,0 +1,13 @@
+<!-- Added by new-IefPolicies. Use Import-IefPolicies to resolve" /-->
+<ClaimsProvider xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+    <DisplayName>Azure Active Directory</DisplayName>
+    <TechnicalProfiles>
+        <TechnicalProfile Id="AAD-Common">
+            <DisplayName>Azure Active Directory</DisplayName>
+            <Metadata>
+                <Item Key="ApplicationObjectId">{ExtObjectId}</Item>
+                <Item Key="ClientId">{ExtAppId}</Item>
+            </Metadata>
+        </TechnicalProfile>
+    </TechnicalProfiles>
+</ClaimsProvider>

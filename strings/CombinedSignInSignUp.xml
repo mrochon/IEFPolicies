@@ -1,0 +1,16 @@
+<UserJourneys xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+    <UserJourney Id="{4}">
+        <OrchestrationSteps>
+            <OrchestrationStep Order="{0}" Type="CombinedSignInAndSignUp" ContentDefinitionReferenceId="api.signuporsignin">
+              <ClaimsProviderSelections>
+                <ClaimsProviderSelection TargetClaimsExchangeId="{1}Exchange" />
+              </ClaimsProviderSelections>
+            </OrchestrationStep>
+            <OrchestrationStep Order="{2}" Type="ClaimsExchange">
+              <ClaimsExchanges>
+                <ClaimsExchange Id="{1}Exchange" TechnicalProfileReferenceId="{3}" />
+              </ClaimsExchanges>
+            </OrchestrationStep>
+        </OrchestrationSteps>
+    </UserJourney>
+</UserJourneys>

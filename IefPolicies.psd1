@@ -4,7 +4,7 @@
 RootModule = 'IefPolicies.psm1'
 
 # Version number of this module.
-ModuleVersion = '3.1.0'
+ModuleVersion = '3.1.1'
 
 PowerShellVersion = '7.0'
 
@@ -33,7 +33,6 @@ RequiredModules = @()
 FunctionsToExport = @(
     'Add-IEFPoliciesSample'  
     'Add-IEFPoliciesIdP'
-    'Add-IEFPoliciesSamlSP'
     'Connect-IEFPolicies' 
     'Export-IEFPolicies'
     'Get-IefPoliciesAADCommon'    
@@ -41,7 +40,8 @@ FunctionsToExport = @(
     'Initialize-IefPolicies'            
     'New-IEFPolicies'
     'New-IefPoliciesCert'
-    'New-IefPoliciesKey'    
+    'New-IefPoliciesKey'  
+    'New-IEFPoliciesSamlRP'  
     'Remove-IEFPolicies'    
 )
 
