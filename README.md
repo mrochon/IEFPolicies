@@ -45,7 +45,7 @@ This module can be instaled from the [PowerShell Gallery](https://www.powershell
 ### Tenant setup
 If your B2C is not yet setup for using IEF (custom journeys) execute:
 ```Powershell
-Connect-IefPolicies <tenantname> -allowInit
+Connect-IefPolicies <tenantname> 
 Initialize-IefPolicies
 ```
 or use use [the IEF setup website](https://aka.ms/b2csetup/) or follow [instructions provided in the official documentation](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-get-started) to do so. 
@@ -131,14 +131,16 @@ Parameters:
 Use *Connect-IEFPolicies* cmdlet to sign in to your B2C tenant and obtain access tokens needed to execute other
 cmdlets (*import-* and *export-*) in this module which require Graph access to the tenant. You can sign in either
 interactively using user credentials or using application credentials (id and secret). For the former, the user must be
-able to consent to permissions to operate on the trust framework policies, read domains used by the tenant and read applications registered in the tenant. To use application id and secret, [register an application using Graph](https://docs.microsoft.com/en-us/azure/active-directory-b2c/microsoft-graph-get-started) and grant it the following **application** permissions:
+have a directory role with sufficient privileges to execute requested actions. 
+
+To use the OAuth2 Client Credentials tokens, using application id and secret, [register the application for use with Microsoft Graph](https://docs.microsoft.com/en-us/azure/active-directory-b2c/microsoft-graph-get-started) and grant it the following **application** permissions:
 1. Application.Read.All 
 2. Domain.Read.All
 3. Organization.Read.All
 4. Policy.ReadWrite.TrustFramework
 5. TrustFrameworkKeySet.ReadWrite.All (if module used to create policy keys or initialize the tenant)
 
-For interactive signin you do **not** need to regsiter an application. This module is already registered as a multi-tenant app.
+For interactive signin you do **not** need to register the application. This module is already registered as an AAD multi-tenant app.
 
 E.g.
 
@@ -152,7 +154,6 @@ Connect-IefPolicies -tenant myTenant -clientId "registered app id" -clientSecret
 | tenant | N | Name of tenant you want to sign into. '.onmicrosoft.com' is not required. This parameter is required if you are signing in with an account which is an invited guest in your B2C tenant |
 | clientId | N | id of an application registered in your tenant for non-interactive signin |
 | clientSecret | N | Secret generated for the app |
-| allowInit | N | Requests additional OAuth2 scopes need by the Initialize-IefPolicies command |
 
 ### Export-IEFPolicies
 
@@ -247,7 +248,7 @@ Performs [B2C tenant setup as descibed in the official documentation](https://do
 policy key (B2C_1A_FacebookSecret) to allow uloading of policy sets with social provider support - they all use Facebook as example of a social provider. 
 
 ```PowerShell
-Connect-IefPolicies <b2c name> -allowInit
+Connect-IefPolicies <b2c name>
 Initialize-IEFPolicies
 ```
 **NOTE:** at completion this command displays a url which, when executed through a browser will allow an administrator to grant admin consent to one of the required applications (IEFProxy) have signin permissons to another. It is **important** to

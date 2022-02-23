@@ -345,9 +345,6 @@ function Connect-IEFPolicies {
     .PARAMETER clientSecret
     OAuth2 client secret; when using non-interactive (application) signin)
 
-    .PARAMETER allowInit
-    Requests additional delegated scopes needed to create applications and keysets  
-
     .EXAMPLE
         PS C:\> Connect-IEFPolicies -tenant abctenant
 
@@ -693,17 +690,14 @@ function Initialize-IefPolicies() {
             PS C:\> Initialize-IEFPolicies 
        
         .NOTES
-        Please use connect-iefpolicies -tenant <tanant Name> -allowInit before executing this command
+        None
     #>
         [CmdletBinding()]
         param(
             [ValidateNotNullOrEmpty()]
             [switch]$validateOnly
         )
-    if (-not $script:tokens.scope.Split(' ').Contains("Application.ReadWrite.All")) {
-        Write-Error "Please signin agin for elevated privileges: Connect-IefPolicies -Tenant <tenantname> -allowInit"
-        throw
-    }
+
     $iefAppName = "IdentityExperienceFramework"
     $iefProxyAppName = "ProxyIdentityExperienceFramework"
     $iefApp = Get-Application $iefAppname
@@ -854,7 +848,7 @@ function Get-IefPoliciesAADCommon() {
             PS C:\> Get-IEFPoliciesAADCommon
        
         .NOTES
-        Please use connect-iefpolicies -tenant <tanant Name> -allowInit before executing this command
+        None
     #>
     $app = Get-Application "b2c-extensions-app. Do not modify. Used by AADB2C for storing user data."
     Write-Host "Configuration settings:"
