@@ -364,9 +364,7 @@ function Connect-IEFPolicies {
         [ValidateNotNullOrEmpty()]
         [string]$clientId,
         [ValidateNotNullOrEmpty()]
-        [string]$clientSecret,
-        [ValidateNotNullOrEmpty()]
-        [switch]$allowInit
+        [string]$clientSecret
     )
     if (-not $tenant) {
         $script:tenantName = "organizations"
@@ -392,11 +390,7 @@ function Connect-IEFPolicies {
         }
     } else {
         $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/devicecode" -f $script:tenantName
-        if ($allowInit) {
-            $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework TrustFrameworkKeySet.ReadWrite.All Application.ReadWrite.All Directory.Read.All offline_access"
-        } else {
-            $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=user.read Policy.ReadWrite.TrustFramework Application.Read.All Directory.Read.All TrustFrameworkKeySet.ReadWrite.All offline_access"
-        }
+        $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=Directory.AccessAsUser.All offline_access"
         try {
             $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
         } catch {
