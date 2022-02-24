@@ -16,7 +16,7 @@
   <UserJourneys>
     <UserJourney Id="SignUpOrSignIn">
       <OrchestrationSteps>
-        <OrchestrationStep Order="7" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="{0}AssertionIssuer"/>
+        <OrchestrationStep Order="{1}" Type="SendClaims" CpimIssuerTechnicalProfileReferenceId="{0}AssertionIssuer"/>
       </OrchestrationSteps>
     </UserJourney>
   </UserJourneys>

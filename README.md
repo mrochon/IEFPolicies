@@ -36,6 +36,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 |  | New: Add-IefPoliciesIdP adds a SAMl or OIDC IdP to an existing policy set and updates journey definitions with the new exchange |
 | 3.0.6  | Change: import all policies if conf file changed since last upload |
 | 3.1.0  | Change: import adds AAD-Common extensions app TP to Extensions.xml |
+| 3.1.2  | New: New-IefPoliciesSamlRP |
 
 
 ### Installation
@@ -322,7 +323,8 @@ New-IefPoliciessamlRp -issuerName Contoso
 
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
-| issuerName | N | Used to name endpoint and associated Technicalprofile (default: SAML) |
+| epName | N | Used to construct B2C signup/signin endpoint name: B2C_1A_[epName]_SUSI (default: SAML) |
+| signingKeyName | N | Used to construct B2C issuing cert policy key container: B2C_1A_[epName]SigningKey (default: same as epName) |
 | sourceDirectory | N | Policy set source (default: ./) |
 | extensionFile | N | Policy file where to create the TechnicalProfile (default: TrustFrameworkExtensions,xml) |
 | configurationFilePath | N | Path for conf.json file (default: ./conf.json) |

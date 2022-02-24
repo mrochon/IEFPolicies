@@ -1311,9 +1311,12 @@ function New-IEFPoliciesSamlRP {
     .DESCRIPTION
     Adds claims provider, RP and related artifacts to support SAML SSO
     
-    .PARAMETER issuerName
-    Applications name (default: SAML)
-    
+    .PARAMETER epName
+    Endpoint name (default: SAML). Will be used as part of TechnicalProfile name as well.
+     
+    .PARAMETER signingKeyName
+    Endpoint name (default: same as epName)
+
     .PARAMETER sourceDirectory
     Directory with current policies (defauly: .\)
         
@@ -1327,7 +1330,9 @@ function New-IEFPoliciesSamlRP {
     [CmdletBinding()]
     param(
         [ValidateNotNullOrEmpty()]
-        [string]$issuerName = 'SAML',
+        [string]$epName = 'SAML',
+
+        [string]$signingKeyName,
 
         [ValidateNotNullOrEmpty()]
         [string]$sourceDirectoryPath = '.\',
@@ -1338,7 +1343,13 @@ function New-IEFPoliciesSamlRP {
         [ValidateNotNullOrEmpty()]
         [string]$configurationFilePath = '.\conf.json'
     )
-
+    if($null -eq $epName) {
+        Write-Error "epName parameter may not be empty"
+        throw "Endpoint name (epName) parameter may not be empty"
+    }
+    if($null -eq $signingKeyName) {
+        $signingKeyName = $epName
+    }
     if(-not(Test-Path $configurationFilePath)){
         $configurationFilePath = ".\conf.json"
         Write-Host ("{0} configuration file created" -f $configurationFilePath)
@@ -1353,14 +1364,14 @@ function New-IEFPoliciesSamlRP {
         'Content-Type' = "application/json";        
     }
     # Ensure there is a token signing cert
-    $keyName = ("B2C_1A_{0}SigningKey" -f $issuerName)
+    $keyName = ("B2C_1A_{0}SigningKey" -f $signingKeyName)
     $keyset = Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}" -f $keyName) -Method Get -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable httpStatus
     if (400 -eq $httpStatus) {
         $keyset = New-IefPoliciesCert $keyName
     }
     # Add SAML Assertion Issuer
     $extensions = [xml](Get-Content ($sourceDirectoryPath + $extensionsFile))
-    $tpName = ("{0}AssertionIssuer" -f $issuerName)
+    $tpName = ("{0}AssertionIssuer" -f $epName)
     $exists = $false
     foreach($cp in $extensions.TrustFrameworkPolicy.ClaimsProviders.ChildNodes) {
         if($exists) { break }
@@ -1375,24 +1386,28 @@ function New-IEFPoliciesSamlRP {
         Write-Warning ("{0} already exists. {1} will not be updated" -f $tpName, $extensionsFile)
     } else {
         $SAMLAssertionIssuer = Get-Content "$PSScriptRoot\strings\SAMLAssertionIssuer.xml"
-        $temp = $SAMLAssertionIssuer -f $issuerName
+        $temp = $SAMLAssertionIssuer -f $epName
         $node = $extensions.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$temp).FirstChild, $true)
         $node = $extensions.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
         $dest = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($sourceDirectoryPath + $extensionsFile)
         $extensions.PreserveWhitespace = $true
         $extensions.Save($dest)
-        Write-Host ("{0}AssertionIssuer TechnicalProfile added to {1}" -f $issuerName, $extensionsFile)
+        Write-Host ("{0}AssertionIssuer TechnicalProfile added to {1}" -f $epName, $extensionsFile)
     } 
     # Add RP
+    # Which step in Base SUSI does sendclaims?
+    $base = [xml](Get-Content -Raw ($sourceDirectoryPath + "TrustFrameworkBase.xml"))
+    $susi = $base.TrustFrameworkPolicy.UserJourneys.ChildNodes | Where-Object $_.Id -eq "SignUpOrSignIn"
+    $lastStepNo = ($susi.OrchestrationSteps.ChildNodes | Select-Object -Last 1).Order
     $samlRP = Get-Content "$PSScriptRoot\strings\SAMLRP.xml"
-    $temp = $samlRP -f $issuerName
-    $rpFileName = ("{0}{1}_SUSI.xml" -f $sourceDirectory, $issuerName)
+    $temp = $samlRP -f $epName, $laststepNo
+    $rpFileName = ("{0}{1}_SUSI.xml" -f $sourceDirectory, $epName)
     $temp | Out-File -FilePath $rpFileName
     Write-Host ("{0} added/replaced" -f $rpFileName)    
-    Write-Host ("Metadata: https://{0}.b2clogin.com/{0}.onmicrosoft.com/B2C_1A_{1}{2}_SUSI/samlp/metadata" -f $script:b2cName, $conf.Prefix,  $issuerName)
+    Write-Host ("Metadata: https://{0}.b2clogin.com/{0}.onmicrosoft.com/B2C_1A_{1}{2}_SUSI/samlp/metadata" -f $script:b2cName, $conf.Prefix,  $epName)
     # Update conf file
-    $tpConf = @{ samlResponseIssuerUri = ("https://{0}/{1}" -f $script:b2cDomain, $issuerName) }
-    Add-Member -InputObject $conf -NotePropertyName $issuerName -NotePropertyValue $tpConf
+    $tpConf = @{ samlResponseIssuerUri = ("https://{0}/{1}" -f $script:b2cDomain, $epName) }
+    Add-Member -InputObject $conf -NotePropertyName $epName -NotePropertyValue $tpConf
     $conf | ConvertTo-Json | Out-File -FilePath ("{0}conf.json" -f $sourceDirectoryPath)
     Write-Host ("{0} updated" -f $configurationFilePath)
 }
