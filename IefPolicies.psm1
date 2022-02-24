@@ -489,6 +489,7 @@ param(
                 $xml.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
                 $dest = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($fileDestination)
                 # Save does not understand relative path
+                $xml.PreserveWhitespace = $true
                 $xml.Save($dest)
                 Write-Warning "Added AAD-Common extensions app settings to TrustFrameworkExtensions.xml"
             } else {
@@ -1297,6 +1298,7 @@ function Add-IEFPoliciesIdP {
         $xml.Save(("{0}{1}" -f $updatedSourceDirectory, $rpFileName))
         Write-Host ("{0} updated" -f $rpFileName)
     }
+    $federations.PreserveWhitespace = $true
     $federations.Save(("{0}{1}" -f $updatedSourceDirectory, $federationsPolicyFile))
     Write-Host ("{0} updated" -f $federationsPolicyFile)
     Write-Host ("Please review and update the {0} file" -f $configurationFilePath)
@@ -1397,7 +1399,7 @@ function New-IEFPoliciesSamlRP {
     # Add RP
     # Which step in Base SUSI does sendclaims?
     $base = [xml](Get-Content -Raw ($sourceDirectoryPath + "TrustFrameworkBase.xml"))
-    $susi = $base.TrustFrameworkPolicy.UserJourneys.ChildNodes | Where-Object $_.Id -eq "SignUpOrSignIn"
+    $susi = $base.TrustFrameworkPolicy.UserJourneys.ChildNodes | Where Id -eq "SignUpOrSignIn"
     $lastStepNo = ($susi.OrchestrationSteps.ChildNodes | Select-Object -Last 1).Order
     $samlRP = Get-Content "$PSScriptRoot\strings\SAMLRP.xml"
     $temp = $samlRP -f $epName, $laststepNo
