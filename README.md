@@ -37,6 +37,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 | 3.0.6  | Change: import all policies if conf file changed since last upload |
 | 3.1.0  | Change: import adds AAD-Common extensions app TP to Extensions.xml |
 | 3.1.2  | New: New-IefPoliciesSamlRP |
+| 3.1.3  | New: Debug-IefPolicies |
 
 
 ### Installation
@@ -70,6 +71,7 @@ Import-IefPolicies
 1. [Add-IEFPoliciesSample](https://github.com/mrochon/IEFPolicies#add-iefpoliciessample)
 1. [Add-IEFPoliciesIdP](https://github.com/mrochon/IEFPolicies#add-iefpoliciesidp)
 2. [Connect-IEFPolicies](https://github.com/mrochon/IEFPolicies#connect-iefpolicies)
+2. [Debug-IEFPolicies](https://github.com/mrochon/IEFPolicies#debug-iefpolicies)
 3. [Export-IEFPolicies](https://github.com/mrochon/IEFPolicies#export-iefpolicies)
 4. [Get-IEFPoliciesAADCommon](https://github.com/mrochon/IEFPolicies#get-iefpoliciesaadcommon)
 5. [Import-IEFPolicies](https://github.com/mrochon/IEFPolicies#import-iefpolicies)
@@ -155,6 +157,23 @@ Connect-IefPolicies -tenant myTenant -clientId "registered app id" -clientSecret
 | tenant | N | Name of tenant you want to sign into. '.onmicrosoft.com' is not required. This parameter is required if you are signing in with an account which is an invited guest in your B2C tenant |
 | clientId | N | id of an application registered in your tenant for non-interactive signin |
 | clientSecret | N | Secret generated for the app |
+
+### Debug-IEFPolicies
+
+*Debug-IEFPolicies* performs static code analysis on a policy set, looking for common errors for which the policy load process does not provide any or adequate debugging information:
+
+1. Duplicate key names in a Metadata element (load reports that a duplicate key was found but does not specify where) 
+2. Invalid claim names in Preconditions (these are not caught by the load process)
+3. Using claim names as the 2nd operand in a ClaimEquals condition in the mistaken expectation that values of claims will be compared. The comparison requires a literal value in that operand.
+4. 
+
+```PowerShell
+Debug-IefPolicies -sourceDirectoryPath  'c:\temp\ief'
+```
+
+| Property name | Required | Purpose |
+| -------- | ------ | ----- |
+| sourceDirectoryPath | N | Directory path with policy set xml files (default: current working directory) |
 
 ### Export-IEFPolicies
 

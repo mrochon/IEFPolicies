@@ -4,7 +4,7 @@
 RootModule = 'IefPolicies.psm1'
 
 # Version number of this module.
-ModuleVersion = '3.1.2'
+ModuleVersion = '3.1.3'
 
 PowerShellVersion = '7.0'
 
@@ -34,6 +34,7 @@ FunctionsToExport = @(
     'Add-IEFPoliciesSample'  
     'Add-IEFPoliciesIdP'
     'Connect-IEFPolicies' 
+    'Debug-IefPolicies'
     'Export-IEFPolicies'
     'Get-IefPoliciesAADCommon'    
     'Import-IEFPolicies' 
