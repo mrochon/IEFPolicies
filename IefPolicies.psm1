@@ -1413,3 +1413,91 @@ function New-IEFPoliciesSamlRP {
     $conf | ConvertTo-Json | Out-File -FilePath ("{0}conf.json" -f $sourceDirectoryPath)
     Write-Host ("{0} updated" -f $configurationFilePath)
 }
+
+function Debug-IEFPolicies {
+    <#
+    .SYNOPSIS
+    Does a static code analysis of a policy set looking for common errors
+    
+    .DESCRIPTION
+    Static code analysis of a policy set. Looks for errors or potential errors which are not be detected during policy load. Checks for:
+    1. Unknown claim names in preconditions
+    2. Use of a claim name in ClaimEquals precondition where a literal is expected
+    3. Duplicate key values in Metadata elements
+    
+    .PARAMETER sourceDirectory
+    Directory with xml policies (default is current directory)
+    
+    #>
+    [CmdletBinding()]
+    param(
+        #[Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$sourceDirectory = '.\'
+    )
+    # load originals
+    $files = Get-Childitem -Path $sourceDirectory -Filter '*.xml'
+    $policyList = @()
+    $claims = New-Object Collections.Generic.List[String]
+    foreach($policyFile in $files) {
+        $policy = [string](Get-Content $policyFile.FullName)
+        try {
+            $xml = [xml] $policy
+            $id = $xml.TrustFrameworkPolicy.PolicyId
+            if ($null -eq $id) { continue }
+            $policyList= $policyList + @(@{ Id = $id; BaseId = $xml.TrustFrameworkPolicy.BasePolicy.PolicyId; Body = $policy; Source= $policyFile.Name; LastWrite = $policyFile.LastWriteTime })
+            foreach($c in $xml.TrustFrameworkPolicy.BuildingBlocks.ClaimsSchema.ChildNodes) {
+                if("Element" -ne $c.NodeType) { continue }
+                $name = $c.Attributes["Id"].Value
+                if($claims.Contains($name)) { continue }
+                $claims.Add($name)                
+            }
+        } catch {
+            Write-Warning ("{0} is not an XML file. Ignored." -f $policyFile)
+        }
+    }
+
+    $errorCount = 0
+
+    foreach($policy in $policyList) {
+        Select-Xml -Content $policy.Body -NameSpace @{ dflt = 'http://schemas.microsoft.com/online/cpim/schemas/2013/06' } -XPath "//dflt:Metadata" | foreach {
+            # Look for duplicate Metadata key values
+            $keys = New-Object Collections.Generic.List[String]
+            foreach($k in $_.node.ChildNodes) {
+                if("Element" -ne $k.NodeType) { continue }
+                if($keys.Contains($k.Key)) {
+                    Write-Host ("{1}: Metadata for '{0}' contains duplicate key '{2}'" -f $_.node.ParentNode.Attributes["Id"].Value, $policy.Source, $k.Key)
+                    ++$errorCount
+                }
+                $keys.Add($k.Key)
+            }
+        }
+        # Look for mis-spelled claim names or claim names used in Claimequals comparison value in Preconditions
+        Select-Xml -Content $policy.Body -NameSpace @{ dflt = 'http://schemas.microsoft.com/online/cpim/schemas/2013/06' } -XPath "//dflt:Preconditions" | foreach {
+            foreach($p in $_.node.ChildNodes) {
+                if("Element" -ne $p.NodeType) { continue }
+                $type = $p.Type
+                $clauseNo = 0
+                foreach($c in $p.ChildNodes) {
+                    if("Element" -ne $c.NodeType) { continue }
+                    $val = $c.InnerXml
+                    if ($clauseNo -eq 0) {
+                        if(-not $claims.Contains($val)) {
+                            Write-Host ("{0}: A precondition contains an unknown claim '{1}'" -f $policy.Source, $val)
+                            ++$errorCount
+                        }
+                        if ($type -eq "ClaimsExist") { break } # check only the first Value element
+                    } else {
+                        if($claims.Contains($val)) {
+                            Write-Host ("{0}: A ClaimEquals precondition is testing against a name of an existing claim type {1}. Test value must be a literal." -f $policy.Source, $val)
+                            ++$errorCount
+                        }
+                        break
+                    }
+                    ++$clauseNo
+                }
+            }
+        }
+    }
+    Write-Host ("Found {0} possible issues" -f $errorCount)
+}
