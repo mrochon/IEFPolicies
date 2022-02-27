@@ -21,28 +21,30 @@ LONG DESCRIPTION
     These functions can be used either via an interactive user signin or using application credentials. For the latter
     use an application needs to be regsitered in your tenant with the following application Graph permissions:
     1. Application.Read.All 
-2. Domain.Read.All
-3. Organization.Read.All
-4. Policy.ReadWrite.TrustFramework
+    2. Domain.Read.All
+    3. Organization.Read.All
+    4. Policy.ReadWrite.TrustFramework
 
     This module exports the following functions:
         Add-IefPoliciesSample
+        Add-IefPoliciesIdp        
         Connect-IefPolicies
+        Export-IEFPolicies        
         Import-IEFPolicies
-        Export-IEFPolicies
-        New-IefPolicies
-        Remove-IefPolicies
-        Add-IefPoliciesSample
         Initialize-IefPolicies
-        Get-IefPoliciesAADCommon
-    
+        New-IefPolicies
+        New-IEFPoliciesCert
+        New-IEFPoliciesKey        
+        New-IefPoliciesSamlRP
+        Remove-IefPolicies
+
      
-    Their usage scenarios can be displayed with:
+    Their usage scenarios can be displayed with or see https://github.com/mrochon/IEFPolicies
     Get-Help Import-IEFPolicies -Examples
  
 NOTES
     Author : Marius Rochon
-    Version : 3.0.2
+    Version : 3.1.2
  
 
 [PS] > New-IEFPolicies (you will be prompted for which starter pack to use)
