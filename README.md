@@ -38,6 +38,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 | 3.1.0  | Change: import adds AAD-Common extensions app TP to Extensions.xml |
 | 3.1.2  | New: New-IefPoliciesSamlRP |
 | 3.1.3  | New: Debug-IefPolicies |
+|  | Change: Add-IefPoliciesIdp -protocol aad adds AAD MT support to a policy set |
 
 
 ### Installation
@@ -111,6 +112,8 @@ Adds a standard SAMl or OIDC IdP to an existing policy set and updates journeys 
 
 As part of the process, this command adds a new object to the configuration file with data that needs to be provided before the policies are imported
 
+*Add-IefPolicies -protocol aad* adds AAD multi-tenant support to the policy set. If not already in existence, this command will register a new application called *AADCommon* and store it's secret in *B2C_1A_AADAppSecret* policy container.
+
 The following command will add a new OIDC TechnicalProfile named *Contoso-OIDC* to the TrustFrameworkExtension.xml and add references to it to all journeys referenced by relying parties defined in this policy set. It will also extend the conf.json file with some additional settings (e.g. metadata url) to be used when importing these files to B2C. 
 
 ```PowerShell
@@ -122,7 +125,7 @@ Parameters:
 
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
-| protocol | N | Protocol name: *OIDC* (default) or *SAML* |
+| protocol | N | Protocol name: *OIDC* (default), *AAD* or *SAML* |
 | Name | Y | Issuer name |
 | sourceDirectoryPath | N | Current policies source xml files |
 | updatedSourceDirectory | N | Directory where any new/updated files will be stored (default: ./federations) |

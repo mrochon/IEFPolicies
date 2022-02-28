@@ -883,6 +883,7 @@ function New-Application {
         'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
         'Content-Type' = "application/json";        
     }
+    Write-Debug ("New-Application {0}" -f $Appname)
     $app = Get-Application $AppName
     if ($null -ne $app) { return $app }
     # openid perms
@@ -902,42 +903,59 @@ function New-Application {
 
     # if this is an API (not using other API, cannot in B2C anyway)
     if ($null -eq $API) {
-        $body = @{
-            displayName = $AppName;
-            signInAudience = "AzureADMyOrg";
-            requiredResourceAccess = @( $OIDCAccess );
-        }  
-        try {
-            $app = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/applications" -Method POST -Headers $headers -Body ($body | ConvertTo-Json -Depth 6)
-        } catch {
-            Write-Error $_.ErrorDetails.Message
-            throw
-        }
-        $apiProps = @{
-            identifierUris = @(("https://{0}/{1}" -f $script:b2cDomain, $app.appId));
-            web = @{
-                redirectUris = @( ("https://{0}.b2clogin.com/{1}" -f $script:b2cName, $script:b2cDomain))
-            };
-            api = @{
-                oauth2PermissionScopes = @(
-                    @{
-                        adminConsentDescription = ("Allow the application to access {0} on behalf of the signed-in user." -f $AppName);
-                        adminConsentDisplayName = ("Access {0}" -f $AppName);
-                        id = [guid]::NewGuid();
-                        isEnabled = $true;
-                        type = "Admin";
-                        value = "user_impersonation";
-                    }
-                )
+        if ("AADCommon" -eq $AppName) {
+            $body = @{
+                displayName = $AppName;
+                signInAudience = "AzureADMultipleOrgs";
+                requiredResourceAccess = @( $OIDCAccess );
+                web = @{
+                    redirectUris = @(("https://{0}.b2clogin.com/{0}.onmicrosoft.com/oauth2/authresp" -f $script:b2cName))
+                }
+            }  
+            try {
+                $app = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/applications" -Method POST -Headers $headers -Body ($body | ConvertTo-Json -Depth 6)
+            } catch {
+                Write-Error $_.ErrorDetails.Message
+                throw
             }
-        }
-        try {
-            Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/applications/{0}" -f $app.id) -Method PATCH -Headers $headers -Body ($apiProps | ConvertTo-Json -Depth 6) | Out-Null
-            $app.identifierUris = $apiProps.identifierUris
-            $app.web = $apiProps.web
-            $app.api = $apiProps.api
-        } catch {
-            throw $_
+        } else { # IEFApp
+            $body = @{
+                displayName = $AppName;
+                signInAudience = "AzureADMyOrg";
+                requiredResourceAccess = @( $OIDCAccess );
+            }  
+            try {
+                $app = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/applications" -Method POST -Headers $headers -Body ($body | ConvertTo-Json -Depth 6)
+            } catch {
+                Write-Error $_.ErrorDetails.Message
+                throw
+            }
+            $apiProps = @{
+                identifierUris = @(("https://{0}/{1}" -f $script:b2cDomain, $app.appId));
+                web = @{
+                    redirectUris = @( ("https://{0}.b2clogin.com/{1}" -f $script:b2cName, $script:b2cDomain))
+                };
+                api = @{
+                    oauth2PermissionScopes = @(
+                        @{
+                            adminConsentDescription = ("Allow the application to access {0} on behalf of the signed-in user." -f $AppName);
+                            adminConsentDisplayName = ("Access {0}" -f $AppName);
+                            id = [guid]::NewGuid();
+                            isEnabled = $true;
+                            type = "Admin";
+                            value = "user_impersonation";
+                        }
+                    )
+                }
+            }
+            try {
+                Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/applications/{0}" -f $app.id) -Method PATCH -Headers $headers -Body ($apiProps | ConvertTo-Json -Depth 6) | Out-Null
+                $app.identifierUris = $apiProps.identifierUris
+                $app.web = $apiProps.web
+                $app.api = $apiProps.api
+            } catch {
+                throw $_
+            }
         }
     } else { 
         $body = @{
@@ -974,15 +992,28 @@ function Get-Application {
         [Parameter(Mandatory)]
         [string] $AppName
     )
+    Write-Debug "Get-Application"
     Refresh_token
     $headers = @{
         'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
     try {
-        $resp = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/applications?`$filter=displayName eq '{0}'" -f $AppName) -Method Get -Headers $headers
-        $app = $resp.value[0]
+        $resp = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/applications?`$filter=displayName eq '{0}'" -f $AppName) -Method Get -Headers $headers  -SkipHttpErrorCheck -StatusCodeVariable httpStatus
+        if(200 -ne $httpStatus) {
+            Write-Error $resp.Error
+            return $null
+        }
+        if($resp.value.Count -gt 0) {
+            $app = $resp.value[0]
+            Write-Debug ("Get-Application returning {0}" -f $app.id)            
+        } else {
+             $app = $null 
+             Write-Debug "App not found"
+        }
+
         return $app;
     } catch {
+        Write-Debug "Get-Application not found"        
         return $null
     }
 }
@@ -1033,6 +1064,7 @@ function New-IEFPoliciesKey {
         'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
         'Content-Type' = "application/json";        
     }
+    Write-Debug ("New-IefPoliciesKey: creating key container {0}" -f $name)
     $keyset = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/trustFramework/keySets" -Method POST -Headers $headers -Body (@{ id = $name} | ConvertTo-Json) -SkipHttpErrorCheck -StatusCodeVariable httpStatus
     if (403 -eq $httpStatus) {
         Write-Error $keyset.error
@@ -1049,9 +1081,11 @@ function New-IEFPoliciesKey {
     $nbf = [math]::Round((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date).AddMonths($startValidityInMonths)).TotalSeconds)
 
     if($null -eq $value) {
+        Write-Debug "New-IefPoliciesKeySet: generating key"
         $keyset = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}/generateKey" -f $keySetId) `
             -Method Post -Headers $headers -Body (@{ use = $purpose; kty = $keyType; nbf = $nbf ; exp = $exp} | ConvertTo-Json)  -SkipHttpErrorCheck -StatusCodeVariable httpStatus
     } else {
+        write-Debug "New-IefPoliciesKeySet: Uploading secret"
         $keyset = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}/uploadSecret" -f $keySetId) `
             -Method Post -Headers $headers -Body (@{ use = $purpose; k = $value; nbf = $nbf ; exp = $exp} | ConvertTo-Json)  -SkipHttpErrorCheck -StatusCodeVariable httpStatus        
     }
@@ -1146,9 +1180,8 @@ function Add-IEFPoliciesIdP {
         [ValidateNotNullOrEmpty()]
         [string]$protocol = 'OIDC',
 
-        [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [string]$name = 'contoso',
+        [string]$name = 'Contoso',
 
         [ValidateNotNullOrEmpty()]
         [string]$sourceDirectoryPath = '.\',
@@ -1163,6 +1196,7 @@ function Add-IEFPoliciesIdP {
         [string]$configurationFilePath = '.\conf.json'
     )
 
+    Write-Debug ("Protocol: {0}, name: {1}" -f $protocol, $name)
     if ($updatedSourceDirectory) {
         $updatedSourceDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($updatedSourceDirectory)
         if(!(Test-Path -Path $updatedSourceDirectory )){
@@ -1236,19 +1270,62 @@ function Add-IEFPoliciesIdP {
 
     # add technical profile
     $tpConf = @{ domainName = ("{0}.com" -f $name); displayName = ("{0} employees" -f $name); metadataUrl = "https://metadata.com" }
-    switch($protocol.ToLower()) {
-        "oidc" {
+    $name = $name.ToUpper()
+    switch($protocol) {
+        "AAD" { # AAD, multi-tenant
+            #  $DebugPreference = "Continue"
+            Write-Debug "Adding AAD multi-tenant"
+            Refresh_token
+            $headers = @{
+                'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
+                'Content-Type' = "application/json";        
+            }
+            #Write-Debug $script:tokens.access_token
+            $aadCommon = New-Application -AppName "AADCommon" 
+            Write-Debug ("Application: {0}, appId:{1}" -f $name, $aadCommon.appId)    
+            Write-Debug ("Checking for key {0}AppSecret" -f $name)   
+            # assigning to $resp to prevent error output      
+            $resp = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/B2C_1A_{0}AppSecret" -f $name) -Method GET -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable httpStatus
+            if (400 -eq $httpStatus) {
+                Write-Debug "Creating new password"
+                $appKey = (@{passwordCredential = @{ 
+                    displayName = "Created by IefPolicies"
+                }} | ConvertTo-Json -Depth 3)
+                $password = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/applications/{0}/addPassword" -f $aadCommon.id) `
+                    -Method Post -Headers $headers -Body $appKey -SkipHttpErrorCheck -StatusCodeVariable httpStatus
+                if(200 -ne $httpStatus) {
+                    Write-Error "Failed to create secret for application AADCommon"
+                } else {
+                    Write-Debug ("Adding password to Policykeys: B2C_1A_{0}AppSecret" -f $name)
+                    try {
+                        New-IefPoliciesKey -name ("B2C_1A_{0}AppSecret" -f $name) -purpose "sig" -keyType "secret" -value $password.secretText
+                        write-Debug "Secret stored in policy keys"                        
+                    } catch {
+                        Write-Error "Error creating policy key for the AAD app secret"
+                    }
+                }
+            }
+            $str = Get-Content "$PSScriptRoot\strings\aadmulti.xml"
+            $tpId = ("{0}-OIDC" -f $name)            
+            $tpConf = @{ clientId = $aadCommon.appId } # no other properties are replaced
+            $keyMsg = "AADCommon app created/updated"
+        }        
+        "OIDC" {
             $str = Get-Content "$PSScriptRoot\strings\OIDCtp.xml"
+            $tpId = ("{0}-OIDC" -f $name)            
             $tpConf.Add("clientId", "123456")
             $keyMsg = ("Ensure that the OAuth2 client secret is defined in a Policy Contaner named: B2C_1A_{0}OIDCSecret (key usage: sig)" -f $name)
         }
-        "saml" {
+        "SAML" {
             $str = Get-Content "$PSScriptRoot\strings\SAMLIdP.xml"
+            $tpId = ("{0}-SAML" -f $name)
             $keyMsg = ("Ensure that the SAML request signing key is defined in a Policy Contaner named: B2C_1A_{0}SAMLSigningCert" -f $name)
         }
+        "default" {
+            Write-Error ("Invalid protocol name {0}. Must be 'oidc', 'saml' or 'aad'." -f $protocol)
+        }
     }
-    # inject IdP name as prefix for al properties that need to be replaced at load
-    $tpId = ("{0}-{1}" -f $name, $protocol.ToUpper())
+    Write-Debug ("Fixing TP name to {0}" -f $name)
     $str = ($str -f $name)
     $node = $federations.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$str).FirstChild, $true)
     $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
@@ -1259,7 +1336,7 @@ function Add-IEFPoliciesIdP {
         $node = $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
     }
     Add-Member -InputObject $conf -NotePropertyName $name -NotePropertyValue $tpConf
-    $conf | ConvertTo-Json | Out-File -FilePath ("{0}/conf.json" -f $updatedSourceDirectory)
+    $conf | ConvertTo-Json -Depth 4 | Out-File -FilePath ("{0}/conf.json" -f $updatedSourceDirectory)
 
     # add user journey steps
     foreach($rp in $rpList.GetEnumerator()) {
@@ -1298,7 +1375,7 @@ function Add-IEFPoliciesIdP {
         $xml.Save(("{0}{1}" -f $updatedSourceDirectory, $rpFileName))
         Write-Host ("{0} updated" -f $rpFileName)
     }
-    $federations.PreserveWhitespace = $true
+    #$federations.PreserveWhitespace = $true
     $federations.Save(("{0}{1}" -f $updatedSourceDirectory, $federationsPolicyFile))
     Write-Host ("{0} updated" -f $federationsPolicyFile)
     Write-Host ("Please review and update the {0} file" -f $configurationFilePath)
