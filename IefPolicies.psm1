@@ -84,7 +84,7 @@
                 Write-Host $msg  -ForegroundColor Green 
                 # Replace tenant id but only if already there. It messes up xml formatting
                 $xml = [xml] $p.Body
-                $xml.PreserveWhitespace = $true
+                #$xml.PreserveWhitespace = $true
                 try {
                     $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/organization" -Method Get -Headers $headers
                     $xml.TrustFrameworkPolicy.TenantObjectId = $resp.value[0].Id
@@ -489,7 +489,7 @@ param(
                 $xml.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
                 $dest = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($fileDestination)
                 # Save does not understand relative path
-                $xml.PreserveWhitespace = $true
+                #$xml.PreserveWhitespace = $true
                 $xml.Save($dest)
                 Write-Warning "Added AAD-Common extensions app settings to TrustFrameworkExtensions.xml"
             } else {
@@ -1165,7 +1165,7 @@ function Add-IEFPoliciesIdP {
     .PARAMETER updatedSourceDirectory
     Directory where policy files with the new IdP will be created (default: .\federations\
     
-    .PARAMETER federationPolicyFile
+    .PARAMETER federationsPolicyFile
     Xml policy file where the new technical profile will be created (defaults: TrustExtensionsFramework.xml)
 
     .PARAMETER prefix
@@ -1215,12 +1215,15 @@ function Add-IEFPoliciesIdP {
         Write-Host ("Using {0} configuration file" -f $configurationFilePath)
     }
     if(-not(Test-Path $federationsPolicyFile)){
-        $federations = [xml] (Get-Content "$PSScriptRoot\strings\EmptyExtensions.xml")
+        $federationsPolicPath = "$PSScriptRoot\strings\EmptyExtensions.xml"
+        $federations = [xml] (Get-Content $federationsPolicPath)
         Write-Host ("{0} file for federations created" -f $federationsPolicyFile)
     } else {
-        $federations = [xml] (Get-Content -Path $federationsPolicyFile | Out-String)
+        $federationsPolicyPath = resolve-path ($sourceDirectoryPath + $federationsPolicyFile)
+        $federations = [xml] (Get-Content -Path $federationsPolicyPath | Out-String)
     }
     Write-Host ("Using {0} for federation definitions" -f $federationsPolicyFile)
+
 
     # Get journeys requiring updates of federated providers
     $files = Get-ChildItem -Path $sourceDirectory -Filter '*.xml'
@@ -1253,14 +1256,25 @@ function Add-IEFPoliciesIdP {
     }
 
     # which RPs are they used in?
+    $singleRPFed = $false
     foreach($policyFile in $files) {
+        # BUG: what if federations in an RP? modify just that one!
         $policy = Get-Content $policyFile.FullName
         try {
             $xml = [xml] $policy
             if($xml.TrustFrameworkPolicy.RelyingParty) {
                 $rp = $xml.TrustFrameworkPolicy.RelyingParty
                 if($journeyList.ContainsKey($rp.DefaultUserJourney.ReferenceId)) {
-                    $rpList.Add($policyFile.FullName, $journeyList.GetEnumerator().Where({ $_.Key -eq $rp.DefaultUserJourney.ReferenceId }, 'First').Value)
+                    if($federationsPolicyPath.Path -ieq $policyFile.FullName) {
+                        # if IdP is added to a file with RP, only this RP will be updated
+                        $federations = $xml
+                        $singleRPFed = $true
+                        $rpList = @{}
+                        $rpList.Add($policyFile.FullName, $journeyList.GetEnumerator().Where({ $_.Key -eq $rp.DefaultUserJourney.ReferenceId }, 'First').Value)
+                        break
+                    } else {
+                        $rpList.Add($policyFile.FullName, $journeyList.GetEnumerator().Where({ $_.Key -eq $rp.DefaultUserJourney.ReferenceId }, 'First').Value)
+                    }
                 }
             }
         } catch {
@@ -1292,7 +1306,7 @@ function Add-IEFPoliciesIdP {
                     displayName = "Created by IefPolicies"
                 }} | ConvertTo-Json -Depth 3)
                 $password = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/applications/{0}/addPassword" -f $aadCommon.id) `
-                    -Method Post -Headers $headers -Body $appKey -SkipHttpErrorCheck -StatusCodeVariable httpStatus
+                    -Method Post -Headers $headers -Body $appKey
                 if(200 -ne $httpStatus) {
                     Write-Error "Failed to create secret for application AADCommon"
                 } else {
@@ -1327,7 +1341,22 @@ function Add-IEFPoliciesIdP {
     }
     Write-Debug ("Fixing TP name to {0}" -f $name)
     $str = ($str -f $name)
-    $node = $federations.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$str).FirstChild, $true)
+    if (-not $federations.TrustFrameworkPolicy.ClaimsProviders) { # RP xmls may not have it
+        $claimsProviders = $federations.CreateElement("ClaimsProviders", "http://schemas.microsoft.com/online/cpim/schemas/2013/06")
+        if($federations.TrustFrameworkPolicy.UserJourneys) {
+            $claimsProviders = $federations.TrustFrameworkPolicy.InsertBefore($claimsProviders, $federations.TrustFrameworkPolicy.UserJourneys)
+        } elseif($federations.TrustFrameworkPolicy.RelyingParty) {
+            $claimsProviders = $federations.TrustFrameworkPolicy.InsertBefore($claimsProviders, $federations.TrustFrameworkPolicy.RelyingParty)
+        } else {
+            $claimsProviders = $federations.TrustFrameworkPolicy.AppendChild($claimsProviders)
+        }
+    } else {
+        $claimsProviders = $federations.TrustFrameworkPolicy.ClaimsProviders
+    }
+
+    $node = $claimsProviders.OwnerDocument.ImportNode(([xml]$str).FirstChild, $true)
+    $claimsProviders.AppendChild($node)
+
     $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
     if(-not $federations.TrustFrameworkPolicy.ClaimsProviders.ChildNodes.Where({$_.DisplayName -eq 'Session Management'}, 'First')) {
         $samlSessionString = Get-Content "$PSScriptRoot\strings\SAMLSession.xml"
@@ -1340,7 +1369,11 @@ function Add-IEFPoliciesIdP {
 
     # add user journey steps
     foreach($rp in $rpList.GetEnumerator()) {
-        $policy = Get-Content $rp.Key
+        if($singleRPFed) {
+            $policy = $federations # the one and only file that needs updating
+        } else {
+            $policy = Get-Content $rp.Key
+        }
         $xml = [xml] $policy
         if($xml.TrustFrameworkPolicy.UserJourneys.UserJourney) { 
             $addToClaimsExchange = $false
@@ -1375,8 +1408,10 @@ function Add-IEFPoliciesIdP {
         $xml.Save(("{0}{1}" -f $updatedSourceDirectory, $rpFileName))
         Write-Host ("{0} updated" -f $rpFileName)
     }
-    #$federations.PreserveWhitespace = $true
-    $federations.Save(("{0}{1}" -f $updatedSourceDirectory, $federationsPolicyFile))
+    if(-not $singleRPFed) { # alread saved as RP
+        #$federations.PreserveWhitespace = $true
+        $federations.Save(("{0}{1}" -f $updatedSourceDirectory, $federationsPolicyFile))
+    }
     Write-Host ("{0} updated" -f $federationsPolicyFile)
     Write-Host ("Please review and update the {0} file" -f $configurationFilePath)
     Write-Host $keyMsg
@@ -1469,7 +1504,7 @@ function New-IEFPoliciesSamlRP {
         $node = $extensions.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$temp).FirstChild, $true)
         $node = $extensions.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
         $dest = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($sourceDirectoryPath + $extensionsFile)
-        $extensions.PreserveWhitespace = $true
+        #$extensions.PreserveWhitespace = $true
         $extensions.Save($dest)
         Write-Host ("{0}AssertionIssuer TechnicalProfile added to {1}" -f $epName, $extensionsFile)
     } 
