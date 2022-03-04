@@ -1215,7 +1215,7 @@ function Add-IEFPoliciesIdP {
         Write-Host ("Using {0} configuration file" -f $configurationFilePath)
     }
     if(-not(Test-Path $federationsPolicyFile)){
-        $federationsPolicPath = "$PSScriptRoot\strings\EmptyExtensions.xml"
+        $federationsPolicPath = "$PSScriptRoot\strings\EmptyExtension.xml"
         $federations = [xml] (Get-Content $federationsPolicPath)
         Write-Host ("{0} file for federations created" -f $federationsPolicyFile)
     } else {
@@ -1306,9 +1306,9 @@ function Add-IEFPoliciesIdP {
                     displayName = "Created by IefPolicies"
                 }} | ConvertTo-Json -Depth 3)
                 $password = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/applications/{0}/addPassword" -f $aadCommon.id) `
-                    -Method Post -Headers $headers -Body $appKey
+                    -Method Post -Headers $headers -Body $appKey -SkipHttpErrorCheck -StatusCodeVariable httpStatus
                 if(200 -ne $httpStatus) {
-                    Write-Error "Failed to create secret for application AADCommon"
+                    Write-Error "Failed to create secret for application AADCommon. If this application already exists and has several secrets defined, this command may not be able to add a new one. Please delete one of the secrets and re-run."
                 } else {
                     Write-Debug ("Adding password to Policykeys: B2C_1A_{0}AppSecret" -f $name)
                     try {
