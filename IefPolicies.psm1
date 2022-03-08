@@ -760,10 +760,16 @@ function New-IefPoliciesCert {
         Creates a new self-signed certificte, uploads it (public and private keys) to B2C PolicyKeys.
         The CN name of the certificate will be <keyName>.<tenant domain name>
         An existing keyset with same will not be deleted. The new key will be added.
-    
-        .PARAMETER validateOnly
-        Checks for above but does not create any new artifacts
 
+        .PARAMETER keyName
+        Used to name the certificate name (CN=keyname.yourtenant.onmicrosoft.com) and the policy container (B2C_1A_keyname)
+
+        .PARAMETER validityMonths
+        Cert validity in month (from start of validity - see below)
+
+        .PARAMETER startValidInMonths
+        Used to name the certificate name (CN=keyname.yourtenant.onmicrosoft.com) and the policy container (B2C_1A_keyname)
+    
         .EXAMPLE
             PS C:\> New-IEFPoliciesCert RESTAuth
        
