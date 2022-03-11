@@ -39,6 +39,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 | 3.1.2  | New: New-IefPoliciesSamlRP |
 | 3.1.3  | New: Debug-IefPolicies |
 |  | Change: Add-IefPoliciesIdp -protocol aad adds AAD MT support to a policy set |
+|  | Fix: reverted back to specifying all needed permissions instead of AccessAsUser |
 
 
 ### Installation
