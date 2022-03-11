@@ -1647,7 +1647,9 @@ function LoadPolicies([string]$sourceDirectory = "./") {
         Write-Error "Root policy not found in set. There must be exactly one xml policy with no BasePolicy element"
         throw
     }
-    return @{List = $policyList; Root = $policySetRoot}
+    #return @{List = $policyList; Root = $policySetRoot}
+    $script:policies = @{List = $policyList; Root = $policySetRoot}
+    BuildPolicyTree $policyList $policySetRoot
 }
 
 function BuildPolicyTree([PSObject] $policyList, [PSObject] $parent) {
@@ -1660,3 +1662,5 @@ function BuildPolicyTree([PSObject] $policyList, [PSObject] $parent) {
         }
     }
 }
+
+$script:policies = $null
