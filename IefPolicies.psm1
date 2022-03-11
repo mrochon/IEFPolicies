@@ -387,7 +387,7 @@ function Connect-IEFPolicies {
         }
     } else {
         $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/devicecode" -f $script:tenantName
-        $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=Directory.AccessAsUser.All offline_access"
+        $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=User.Read Directory.AccessAsUser.All Policy.ReadWrite.TrustFramework TrustFrameworkKeySet.ReadWrite.All offline_access"
         try {
             $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
         } catch {
@@ -1618,4 +1618,45 @@ function Debug-IEFPolicies {
         }
     }
     Write-Host ("Found {0} possible issues" -f $errorCount)
+}
+
+function LoadPolicies([string]$sourceDirectory = "./") {
+    $files = Get-Childitem -Path $sourceDirectory -Filter '*.xml'
+    $policyList = @()
+    foreach($policyFile in $files) {
+        $policy = Get-Content $policyFile.FullName
+        try {
+            $xml = [xml] $policy
+            $id = $xml.TrustFrameworkPolicy.PolicyId
+            if ($null -eq $id) { continue }
+            $base = $xml.TrustFrameworkPolicy.BasePolicy.PolicyId
+            $policyDef = @{ Id = $id; BaseId = $base; Body = $policy; Source= $policyFile.Name; LastWrite = $policyFile.LastWriteTime; Children = @() }
+            if (-not $base) {
+                if($policySetRoot) {
+                    Write-Error "Duplicate base policies fund. There must only be one xml policy with no BasePolicy element"
+                    throw
+                }
+                $policySetRoot = $policyDef
+            }
+            $policyList= $policyList + @($policyDef)
+        } catch {
+            Write-Warning ("{0} is not an XML file. Ignored." -f $policyFile)
+        }
+    }
+    if(-not $policySetRoot) {
+        Write-Error "Root policy not found in set. There must be exactly one xml policy with no BasePolicy element"
+        throw
+    }
+    return @{List = $policyList; Root = $policySetRoot}
+}
+
+function BuildPolicyTree([PSObject] $policyList, [PSObject] $parent) {
+    Write-Debug ("Parent: {0}" -f $parent.Id)
+    foreach($p in $policyList) {
+        if($p.BaseId -eq $parent.Id) {
+            Write-Debug ("   Found child: {0}" -f $p.Id)
+            $parent.Children += $p
+            BuildPolicyTree $policyList $p
+        }
+    }
 }
