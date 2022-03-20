@@ -3,24 +3,29 @@
   <TechnicalProfiles>
 
     <!-- SAML Token Issuer technical profile -->
+    <!--https://docs.microsoft.com/en-us/azure/active-directory-b2c/saml-issuer-technical-profile-->
     <TechnicalProfile Id="{0}AssertionIssuer">
       <DisplayName>Token Issuer</DisplayName>
       <Protocol Name="SAML2"/>
       <OutputTokenFormat>SAML2</OutputTokenFormat>
       <Metadata>
         <Item Key="IssuerUri">{{{0}:samlResponseIssuerUri}}</Item>
+        <!--Item Key="XmlSignatureAlgorithm">sha256</Item-->   
+        <!--Item Key="TokenNotBeforeSkewInSeconds">0</Item-->        
+        <!--Item Key="TokenLifeTimeInSeconds">300</Item-->                           
       </Metadata>
       <CryptographicKeys>
         <Key Id="SamlAssertionSigning" StorageReferenceId="B2C_1A_{0}SigningKey"/>
         <Key Id="SamlMessageSigning" StorageReferenceId="B2C_1A_{0}SigningKey"/>
+        <!--Key Id="MetadataSigning" StorageReferenceId="B2C_1A_{0}SigningKey"/-->
       </CryptographicKeys>
       <InputClaims/>
       <OutputClaims/>
-      <UseTechnicalProfileForSessionManagement ReferenceId="SM-Saml-issuer"/>
+      <UseTechnicalProfileForSessionManagement ReferenceId="SM-Saml-Issuer"/>
     </TechnicalProfile>
 
     <!-- Session management technical profile for SAML-based tokens -->
-    <TechnicalProfile Id="SM-Saml-issuer">
+    <TechnicalProfile Id="SM-Saml-Issuer">
       <DisplayName>Session Management Provider</DisplayName>
       <Protocol Name="Proprietary" Handler="Web.TPEngine.SSO.SamlSSOSessionProvider, Web.TPEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"/>
     </TechnicalProfile>
