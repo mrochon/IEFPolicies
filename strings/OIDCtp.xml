@@ -1,4 +1,5 @@
 <ClaimsProvider xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+  <!-- https://docs.microsoft.com/en-us/azure/active-directory-b2c/openid-connect-technical-profile -->
   <Domain>{{{0}:domainName}}</Domain>
   <DisplayName>{{{0}:displayName}}</DisplayName>
   <TechnicalProfiles>
@@ -8,15 +9,28 @@
       <Protocol Name="OpenIdConnect"/>
       <Metadata>
         <Item Key="METADATA">{{{0}:metadataUrl}}</Item>
-        <Item Key="client_id">{{{0}:clientId}}</Item>
+        <Item Key="client_id">{{{0}:clientId}}</Item>                                               
         <Item Key="response_types">code</Item>
         <Item Key="scope">openid profile</Item>
         <Item Key="response_mode">form_post</Item>
         <Item Key="HttpBinding">POST</Item>
         <Item Key="UsePolicyInRedirectUri">false</Item>
+        <!--Item Key="IdTokenAudience"></Item-->        
+        <!--Item Key="authorization_endpoint"></Item-->        
+        <!--Item Key="end_session_endpoint"></Item-->        
+        <!--Item Key="issuer"></Item-->        
+        <!--Item Key="ProviderName"></Item-->        
+        <!--Item Key="ValidTokenIssuerPrefixes"></Item-->        
+        <!--Item Key="MarkAsFailureOnStatusCode5xx"></Item-->        
+        <!--Item Key="IncludeClaimResolvingInClaimsHandling"></Item-->        
+        <!--Item Key="token_endpoint_auth_method">client_secret_post,client_secret_basic,private_key_jwt</Item-->        
+        <!--Item Key="token_signing_algorithm">RS256 (default) or RS512</Item-->        
+        <!--Item Key="SingleLogoutEnabled">true</Item-->        
+        <!--Item Key="ReadBodyClaimsOnIdpRedirect">used with Apple ID</Item-->              
       </Metadata>
       <CryptographicKeys>
         <Key Id="client_secret" StorageReferenceId="B2C_1A_{0}Secret"/>
+        <!--Key Id="client_secret" StorageReferenceId="B2C_1A_{0}Secret"/-->     <!--This cryptographic key is required only if the token_endpoint_auth_method metadata is set to private_key_jwt -->   
       </CryptographicKeys> 
       <OutputClaims>
         <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="oid"/>
