@@ -32,6 +32,7 @@
         <OutputClaim ClaimTypeReferenceId="surname" />
         <OutputClaim ClaimTypeReferenceId="email" DefaultValue="" />
         <OutputClaim ClaimTypeReferenceId="identityProvider" DefaultValue="" />
+        <!-- NOTE: if a different claim is used as Subject, make sure it uses PartnerClaimType property even if its value is same as ClaimTypeReferenceId /-->
         <OutputClaim ClaimTypeReferenceId="objectId" PartnerClaimType="objectId"/>
       </OutputClaims>
       <SubjectNamingInfo ClaimType="objectId" ExcludeAsClaim="true"/>
