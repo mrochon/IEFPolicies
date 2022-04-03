@@ -1554,30 +1554,25 @@ function Debug-IEFPolicies {
         [string]$sourceDirectory = '.\'
     )
     # load originals
-    $files = Get-Childitem -Path $sourceDirectory -Filter '*.xml'
-    $policyList = @()
+    LoadPolicies $sourceDirectory
+    Write-Output "Policy structure"
+    Write-Output "----------------"
+    ShowPolicyTree $script:policies.Root
+
     $claims = New-Object Collections.Generic.List[String]
-    foreach($policyFile in $files) {
-        $policy = [string](Get-Content $policyFile.FullName)
-        try {
-            $xml = [xml] $policy
-            $id = $xml.TrustFrameworkPolicy.PolicyId
-            if ($null -eq $id) { continue }
-            $policyList= $policyList + @(@{ Id = $id; BaseId = $xml.TrustFrameworkPolicy.BasePolicy.PolicyId; Body = $policy; Source= $policyFile.Name; LastWrite = $policyFile.LastWriteTime })
-            foreach($c in $xml.TrustFrameworkPolicy.BuildingBlocks.ClaimsSchema.ChildNodes) {
-                if("Element" -ne $c.NodeType) { continue }
-                $name = $c.Attributes["Id"].Value
-                if($claims.Contains($name)) { continue }
-                $claims.Add($name)                
-            }
-        } catch {
-            Write-Warning ("{0} is not an XML file. Ignored." -f $policyFile)
+    foreach($policy in $script:policies.List) {
+        $xml = [xml] $policy.Body
+        foreach($c in $xml.TrustFrameworkPolicy.BuildingBlocks.ClaimsSchema.ChildNodes) {
+            if("Element" -ne $c.NodeType) { continue }
+            $name = $c.Attributes["Id"].Value
+            if($claims.Contains($name)) { continue }
+            $claims.Add($name)                
         }
     }
 
     $errorCount = 0
 
-    foreach($policy in $policyList) {
+    foreach($policy in $script:policies.List) {
         Select-Xml -Content $policy.Body -NameSpace @{ dflt = 'http://schemas.microsoft.com/online/cpim/schemas/2013/06' } -XPath "//dflt:Metadata" | foreach {
             # Look for duplicate Metadata key values
             $keys = New-Object Collections.Generic.List[String]
@@ -1624,7 +1619,7 @@ function LoadPolicies([string]$sourceDirectory = "./") {
     $files = Get-Childitem -Path $sourceDirectory -Filter '*.xml'
     $policyList = @()
     foreach($policyFile in $files) {
-        $policy = Get-Content $policyFile.FullName
+        $policy = [string](Get-Content $policyFile.FullName)
         try {
             $xml = [xml] $policy
             $id = $xml.TrustFrameworkPolicy.PolicyId
@@ -1659,6 +1654,15 @@ function BuildPolicyTree([PSObject] $policyList, [PSObject] $parent) {
             Write-Debug ("   Found child: {0}" -f $p.Id)
             $parent.Children += $p
             BuildPolicyTree $policyList $p
+        }
+    }
+}
+
+function ShowPolicyTree([PSObject] $parent, [uint16] $indent = 0) {
+    Write-Output ("{0}{1}({2})" -f ("   " * $indent), $parent.Id, $parent.Source)
+    foreach($p in $script:policies.List) {
+        if($p.BaseId -eq $parent.Id) {
+            ShowPolicyTree $p ($indent+1)
         }
     }
 }
