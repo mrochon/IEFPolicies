@@ -1659,7 +1659,7 @@ function BuildPolicyTree([PSObject] $policyList, [PSObject] $parent) {
 }
 
 function ShowPolicyTree([PSObject] $parent, [uint16] $indent = 0) {
-    Write-Output ("{0}{1}({2})" -f ("   " * $indent), $parent.Id, $parent.Source)
+    Write-Output ("{0}{1}({2})" -f ("`t" * $indent), $parent.Id, $parent.Source)
     foreach($p in $script:policies.List) {
         if($p.BaseId -eq $parent.Id) {
             ShowPolicyTree $p ($indent+1)

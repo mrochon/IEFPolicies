@@ -40,6 +40,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 | 3.1.3  | New: Debug-IefPolicies |
 |  | Change: Add-IefPoliciesIdp -protocol aad adds AAD MT support to a policy set |
 |  | Fix: reverted back to specifying all needed permissions instead of AccessAsUser |
+| 3.1.4 | New: list policy structure as part of Debug-IefPolicies output |
 
 
 ### Installation
