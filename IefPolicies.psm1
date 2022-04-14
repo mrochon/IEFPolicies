@@ -810,7 +810,8 @@ function New-IefPoliciesCert {
             $pfxPath = ".\RESTClientCert.pfx"
             $cert | Export-PfxCertificate -FilePath $pfxPath -Password $pfxPwd
             $pkcs12=[Convert]::ToBase64String([System.IO.File]::ReadAllBytes((get-childitem -path $pfxPath).FullName))
-            $cert.PublicKey | Out-File -FilePath ".\ClientCert.cer"
+            $base64Cert = $([Convert]::ToBase64String($cert.Export('Cert'), [System.Base64FormattingOptions]::InsertLineBreaks))
+            Set-Content -Path ".\ClientCert.cer" -Value $base64Cert
             Write-Host "ClientCert.cer file created"
         } catch {
             Write-Error "Error creating/writing or reading the cert."
