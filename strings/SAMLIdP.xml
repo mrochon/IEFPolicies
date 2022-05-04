@@ -8,6 +8,8 @@
       <Protocol Name="SAML2"/>
       <Metadata>
         <Item Key="PartnerEntity">{{{0}:metadataUrl}}</Item>
+        <Item Key="WantsSignedAssertions">true</Item>
+        <Item Key="ResponsesSigned">false</Item>                     
       </Metadata>
       <CryptographicKeys>
         <Key Id="SamlMessageSigning" StorageReferenceId="B2C_1A_{0}SAMLSigningCert"/>
