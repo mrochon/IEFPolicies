@@ -2,10 +2,6 @@
 
 ## General
 
-### Latest
-The latest 3.0.5 version includes a new command for adding OIDC or SAML IdPs to an existing policy set.
-**Please [install PowerShell 7.x](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows?view=powershell-7.2) to use this module - many of its commands will still work with older versions of PS BUT some will not at all and errors will not be reported correctly in commands that do work.**
-
 ### Purpose
 Aids in the development and deployment of the Azure B2C Identity Experience Policy (IEF) xml files. Provides cmdlets to initiate a
 new policy set from the starter packs, merge community and other samples into the set, deploy to B2C with no need for deployment-specific source changes. Also, includes commands for
@@ -43,19 +39,72 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 | 3.1.4 | New: list policy structure as part of Debug-IefPolicies output |
 
 
-### Installation
+### Use examples
 
-This module can be instaled from the [PowerShell Gallery](https://www.powershellgallery.com/packages/IefPolicies/)
+**Note**: these commands may be in a stand-alone PowerShell console (must be ver 7 or higher) or from VSCode Terminal (PowerShell) console.
+**Note**: all examples below assume that the PowerShell console is positioned on a working directory (here  *demo*) where xml policies are or are to be stored.
 
-### Tenant setup
-If your B2C is not yet setup for using IEF (custom journeys) execute:
+#### Tenant setup
+If your B2C is not yet setup for using IEF as per [instructions provided in the official documentation](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-get-started) execute:
 ```Powershell
-Connect-IefPolicies <tenantname> 
+Connect-IefPolicies myb2ctenant 
 Initialize-IefPolicies
 ```
-or use use [the IEF setup website](https://aka.ms/b2csetup/) or follow [instructions provided in the official documentation](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-get-started) to do so. 
+or use use [the IEF setup website](https://aka.ms/b2csetup/). 
 
-## Use example
+#### Deploy SocialAndLocal starter pack
+
+```PowerShell
+PS C:\demo> New-IefPolicies
+Package type: 
+\[L\]ocal accounts only,
+\[S\] Social/federated only,
+\[SL\]ocal and social/federated,
+\[M\]FA social/federated and local with MFA?
+\[Q\]uit: SL
+PS C:\demo> connect-iefpolicies myb2ctenant
+PS C:\demo> import-iefpolicies
+```
+
+#### Add a SAML IdP
+
+```PowerShell
+PS C:\demo> New-IefPolicies
+Package type: 
+\[L\]ocal accounts only,
+\[S\] Social/federated only,
+\[SL\]ocal and social/federated,
+\[M\]FA social/federated and local with MFA?
+\[Q\]uit: SL
+PS C:\demo> connect-iefpolicies myb2ctenant
+PS C:\demo> Add-IefPoliciesIdP SAML -name Contoso
+PS C:\demo> copy ./federation .
+PS C:\demo> import-iefpolicies
+```
+
+#### Add a SAML RP
+
+```PowerShell
+PS C:\demo> New-IefPolicies
+Package type: 
+\[L\]ocal accounts only,
+\[S\] Social/federated only,
+\[SL\]ocal and social/federated,
+\[M\]FA social/federated and local with MFA?
+\[Q\]uit: SL
+PS C:\demo> connect-iefpolicies myb2ctenant
+PS C:\demo> New-IefPoliciesSamlRP -issuerName Contoso
+PS C:\demo> copy ./federation .
+PS C:\demo> import-iefpolicies
+```
+
+#### Perform static code analysis of the policies
+
+```PowerShell
+Debug-IefPolicies
+```
+
+#### Merge in a sample policy
 
 The following script will deploy a new SocialAndLocalWithMFA starter pack, augmented with [a journey supporting sign in/up, profile edit and password reset in one RelyingParty](https://github.com/mrochon/b2csamples/tree/master/Policies/AllInOne). The uploaded
 policies will be named *B2C_1A_V1* unless the *V1* string is changed in the associated conf.json file.
@@ -68,6 +117,10 @@ Add-IefPoliciesSample AllInOne -owner mrochon -repo b2csamples
 Connect-IefPolicies yourb2c
 Import-IefPolicies
 ```
+
+### Installation
+
+This module can be instaled from the [PowerShell Gallery](https://www.powershellgallery.com/packages/IefPolicies/)
 
 ## Cmdlets
 
