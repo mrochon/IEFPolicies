@@ -11,6 +11,10 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 
 [This repo](https://github.com/mrochon/B2CPipeline) shows how to use this module in an Azure Pipeline for continous deployment of custom journeys.
 
+### Installation
+
+This module can be instaled from the [PowerShell Gallery](https://www.powershellgallery.com/packages/IefPolicies/)
+
 ### Change log
 
 | Name  | Description  |
@@ -117,10 +121,6 @@ Add-IefPoliciesSample AllInOne -owner mrochon -repo b2csamples
 Connect-IefPolicies yourb2c
 Import-IefPolicies
 ```
-
-### Installation
-
-This module can be instaled from the [PowerShell Gallery](https://www.powershellgallery.com/packages/IefPolicies/)
 
 ## Cmdlets
 
