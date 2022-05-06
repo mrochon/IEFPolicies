@@ -1057,7 +1057,7 @@ function New-IEFPoliciesKey {
         [string]$keyType = "rsa",
         
         [ValidateNotNullOrEmpty()]
-        [string]$value = ,
+        [string]$value,
 
         [ValidateNotNullOrEmpty()]
         [int]$validityInMonths = 12,    
