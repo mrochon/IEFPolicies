@@ -13,7 +13,7 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 
 ### Installation
 
-This module can be instaled from the [PowerShell Gallery](https://www.powershellgallery.com/packages/IefPolicies/)
+This module can be installed from the [PowerShell Gallery](https://www.powershellgallery.com/packages/IefPolicies/)
 
 ### Change log
 
