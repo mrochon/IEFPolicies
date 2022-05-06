@@ -1056,7 +1056,7 @@ function New-IEFPoliciesKey {
         [string]$keyType = "rsa",
         
         [ValidateNotNullOrEmpty()]
-        [string]$value,
+        [string]$value = ,
 
         [ValidateNotNullOrEmpty()]
         [int]$validityInMonths = 12,    
@@ -1086,7 +1086,8 @@ function New-IEFPoliciesKey {
     $exp = [math]::Round((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date).AddMonths($startValidityInMonths+$validityInMonths)).TotalSeconds)
     $nbf = [math]::Round((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date).AddMonths($startValidityInMonths)).TotalSeconds)
 
-    if($null -eq $value) {
+    # Issue: https://github.com/mrochon/IEFPolicies/issues/22
+    if([string]::IsNullOrEmpty($value)) {
         Write-Debug "New-IefPoliciesKeySet: generating key"
         $keyset = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}/generateKey" -f $keySetId) `
             -Method Post -Headers $headers -Body (@{ use = $purpose; kty = $keyType; nbf = $nbf ; exp = $exp} | ConvertTo-Json)  -SkipHttpErrorCheck -StatusCodeVariable httpStatus
