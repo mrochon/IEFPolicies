@@ -41,6 +41,7 @@ This module can be installed from the [PowerShell Gallery](https://www.powershel
 |  | Change: Add-IefPoliciesIdp -protocol aad adds AAD MT support to a policy set |
 |  | Fix: reverted back to specifying all needed permissions instead of AccessAsUser |
 | 3.1.4 | New: list policy structure as part of Debug-IefPolicies output |
+| 3.1.5 | New: noPrefix flag in Import-IefPolicies |
 
 
 ### Use examples

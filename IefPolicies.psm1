@@ -42,7 +42,10 @@
         [string]$prefix,
 
         [ValidateNotNullOrEmpty()]
-        [switch]$generateOnly
+        [switch]$generateOnly,
+
+        [ValidateNotNullOrEmpty()]
+        [switch]$noPrefix        
 
     )
 
@@ -98,10 +101,12 @@
                 $policy = $policy -replace "IdentityExperienceFrameworkAppId", $iefRes.appId
                 $policy = $policy -replace "{tenantId}", $script:tenantId
                 $policy = $policy -replace "{ExtAppId}", $extApp.appId     
-                $policy = $policy -replace "{ExtObjectId}", $extApp.id                                         
-                $policy = $policy.Replace('PolicyId="B2C_1A_', 'PolicyId="B2C_1A_{0}' -f $prefix)
-                $policy = $policy.Replace('/B2C_1A_', '/B2C_1A_{0}' -f $prefix)
-                $policy = $policy.Replace('<PolicyId>B2C_1A_', '<PolicyId>B2C_1A_{0}' -f $prefix)
+                $policy = $policy -replace "{ExtObjectId}", $extApp.id 
+                if(-not $noPrefix) {                                        
+                    $policy = $policy.Replace('PolicyId="B2C_1A_', 'PolicyId="B2C_1A_{0}' -f $prefix)
+                    $policy = $policy.Replace('/B2C_1A_', '/B2C_1A_{0}' -f $prefix)
+                    $policy = $policy.Replace('<PolicyId>B2C_1A_', '<PolicyId>B2C_1A_{0}' -f $prefix)
+                }
 
                 # replace other placeholders, e.g. {MyRest} with http://restfunc.com. Note replacement string must be in {}
                 foreach($memb in $confProperties.GetEnumerator()) {
@@ -109,7 +114,11 @@
                     $policy = $policy.Replace($repl, $memb.Value)
                 }
 
-                $policyId = $p.Id.Replace('_1A_', '_1A_{0}' -f $prefix)
+                if($noPrefix) {
+                    $policyId = $p.Id
+                } else {
+                    $policyId = $p.Id.Replace('_1A_', '_1A_{0}' -f $prefix)
+                }
                 if (-not $generateOnly) {
                     $resp = Invoke-WebRequest -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Put -Headers $headersXml -Body $policy -SkipHttpErrorCheck
                     if ($resp.StatusCode -eq 201) {
