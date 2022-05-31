@@ -405,6 +405,11 @@ function Connect-IEFPolicies {
         #if(-not (Get-Host).Name.StartsWith('Visual Studio Code Host')) {
         if(-not $env:TERM_PROGRAM -eq 'vscode') {        
             Start-Process "chrome.exe" $codeResp.verification_uri
+            
+            # If the previous command does not exit successfully, print the verification URL in the window for the user to manually navigate to. 
+            if (!$?) {
+                Write-Warning "Chrome is not installed on this machine. Please navigate to the following URL for verification: {0}" -f $codeResp.verification_uri
+            }
         }
 
         $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $script:tenantName
