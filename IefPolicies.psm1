@@ -120,7 +120,7 @@
                     $policyId = $p.Id.Replace('_1A_', '_1A_{0}' -f $prefix)
                 }
                 if (-not $generateOnly) {
-                    $resp = Invoke-WebRequest -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Put -Headers $headersXml -Body $policy -SkipHttpErrorCheck
+                    $resp = Invoke-WebRequest -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Put -Headers $headersXml -ContentType 'application/xml; charset=utf-8' -Body $policy -SkipHttpErrorCheck
                     if ($resp.StatusCode -eq 201) {
                         Write-Host "Created"
                     } elseif ($resp.StatusCode -eq 200) {
@@ -167,7 +167,6 @@
         'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
     $headersXml = @{
-    'Content-Type' = 'application/xml';
     'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
 
@@ -295,7 +294,6 @@ function Export-IEFPolicies {
         'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
     $headersXml = @{
-        'Content-Type' = 'application/xml';
         'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
     if (-not $destinationPath) {
