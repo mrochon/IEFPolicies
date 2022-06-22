@@ -1477,12 +1477,12 @@ function New-IEFPoliciesSamlRP {
         [ValidateNotNullOrEmpty()]
         [string]$configurationFilePath = '.\conf.json'
     )
-    if($null -eq $epName) {
+    if([string]::IsNullOrEmpty($epName)) {
         Write-Error "epName parameter may not be empty"
         throw "Endpoint name (epName) parameter may not be empty"
     }
-    if($null -eq $signingKeyName) {
-        $signingKeyName = $epName
+    if([string]::IsNullOrEmpty($signingKeyName)) {
+        $signingKeyName = ("B2C_1A_{0}SigningKey" -f $epName)
     }
     if(-not(Test-Path $configurationFilePath)){
         $configurationFilePath = ".\conf.json"
@@ -1498,10 +1498,12 @@ function New-IEFPoliciesSamlRP {
         'Content-Type' = "application/json";        
     }
     # Ensure there is a token signing cert
-    $keyName = ("B2C_1A_{0}SigningKey" -f $signingKeyName)
-    $keyset = Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}" -f $keyName) -Method Get -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable httpStatus
+    if(-not $signingKeyName.Startswith("B2C_1A_")) {
+        $signingKeyName = ("B2C_1A_{0}" -f $signingKeyName)
+    }
+    $keyset = Invoke-RestMethod -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/{0}" -f $signingKeyName) -Method Get -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable httpStatus
     if (400 -eq $httpStatus) {
-        $keyset = New-IefPoliciesCert $keyName
+        $keyset = New-IefPoliciesCert $signingKeyName
     }
     # Add SAML Assertion Issuer
     $extensions = [xml](Get-Content ($sourceDirectoryPath + $extensionsFile))
