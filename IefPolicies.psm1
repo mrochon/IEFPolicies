@@ -922,7 +922,7 @@ function New-Application {
 
     # if this is an API (not using other API, cannot in B2C anyway)
     if ($null -eq $API) {
-        if ("AADCommon" -eq $AppName) {
+        if ($AppName.EndsWith("-MT")) {
             $body = @{
                 displayName = $AppName;
                 signInAudience = "AzureADMultipleOrgs";
@@ -1308,15 +1308,16 @@ function Add-IEFPoliciesIdP {
     switch($protocol) {
         "AAD" { # AAD, multi-tenant
             #  $DebugPreference = "Continue"
-            Write-Debug "Adding AAD multi-tenant"
+            Write-Host "Adding AAD multi-tenant support"
             Refresh_token
             $headers = @{
                 'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
                 'Content-Type' = "application/json";        
             }
             #Write-Debug $script:tokens.access_token
-            $aadCommon = New-Application -AppName "AADCommon" 
-            Write-Debug ("Application: {0}, appId:{1}" -f $name, $aadCommon.appId)    
+            $appName = ("{0}-MT" -f $script:b2cName)
+            $aadCommon = New-Application -AppName $appName
+            Write-Debug ("Application: {0}, appId:{1}" -f $appName, $aadCommon.appId)    
             Write-Debug ("Checking for key {0}AppSecret" -f $name)   
             # assigning to $resp to prevent error output      
             $resp = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/B2C_1A_{0}AppSecret" -f $name) -Method GET -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable httpStatus
@@ -1328,21 +1329,21 @@ function Add-IEFPoliciesIdP {
                 $password = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/applications/{0}/addPassword" -f $aadCommon.id) `
                     -Method Post -Headers $headers -Body $appKey -SkipHttpErrorCheck -StatusCodeVariable httpStatus
                 if(200 -ne $httpStatus) {
-                    Write-Error "Failed to create secret for application AADCommon. If this application already exists and has several secrets defined, this command may not be able to add a new one. Please delete one of the secrets and re-run."
+                    Write-Error ("Failed to create secret for application {0}. If this application already exists and has several secrets defined, this command may not be able to add a new one. Please delete one of the secrets and re-run." -f $name)
                 } else {
                     Write-Debug ("Adding password to Policykeys: B2C_1A_{0}AppSecret" -f $name)
                     try {
                         New-IefPoliciesKey -name ("B2C_1A_{0}AppSecret" -f $name) -purpose "sig" -keyType "secret" -value $password.secretText
-                        write-Debug "Secret stored in policy keys"                        
+                        write-Host ("App secret {0}AppSecret stored in policy keys" -f $name)                     
                     } catch {
                         Write-Error "Error creating policy key for the AAD app secret"
                     }
                 }
-            }
+            } 
             $str = Get-Content "$PSScriptRoot\strings\aadmulti.xml"
             $tpId = ("{0}-OIDC" -f $name)            
             $tpConf = @{ clientId = $aadCommon.appId } # no other properties are replaced
-            $keyMsg = "AADCommon app created/updated"
+            $keyMsg = ("{0} app created/updated" -f $name)
         }        
         "OIDC" {
             $str = Get-Content "$PSScriptRoot\strings\OIDCtp.xml"

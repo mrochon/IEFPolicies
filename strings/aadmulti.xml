@@ -1,5 +1,5 @@
 <ClaimsProvider xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
-    <Domain>commonaad</Domain>
+    <Domain>organizations</Domain>
     <DisplayName>Work and school accounts</DisplayName>
     <TechnicalProfiles>
       <TechnicalProfile Id="{0}-OIDC">
@@ -22,7 +22,7 @@
           <Item Key="ValidTokenIssuerPrefixes">https://login.microsoftonline.com/</Item>
         </Metadata>
         <CryptographicKeys>
-          <Key Id="client_secret" StorageReferenceId="B2C_1A_{0}AppSecret"/>
+          <Key Id="client_secret" StorageReferenceId="B2C_1A_{0}"/>
         </CryptographicKeys>
         <OutputClaims>
           <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="oid"/>
