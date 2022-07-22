@@ -4,7 +4,7 @@
 
 ### Purpose
 Aids in the development and deployment of the Azure B2C Identity Experience Policy (IEF) xml files. Provides cmdlets to initiate a
-new policy set from the starter packs, merge community and other samples into the set, deploy to B2C with no need for deployment-specific source changes. Also, includes commands for
+new policy set from the starter packs, add OIDC and SAML IdP technical profiles and journey updates, add SAML RPs, merge community and other samples into the set, perform static code analysis and deploy to B2C with no need for deployment-specific source changes. Also, includes commands for
 downloading existing policy sets or deleting them from a B2C tenant. Includes a command that may be used to setup a new B2C tenant for use with IEF.
 Makes it easy to re-deploy the same set of xml policies to multiple tenants (dev, test, etc.) by just adjusting the 
 configuration file used by the import cmdlet. Supports either interactive or un-attended (client credentials) authentication to a B2C tenant.
