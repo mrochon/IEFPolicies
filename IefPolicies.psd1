@@ -4,7 +4,7 @@
 RootModule = 'IefPolicies.psm1'
 
 # Version number of this module.
-ModuleVersion = '3.1.7'
+ModuleVersion = '3.1.8'
 
 PowerShellVersion = '7.0'
 

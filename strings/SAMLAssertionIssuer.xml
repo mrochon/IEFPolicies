@@ -15,8 +15,8 @@
         <!--Item Key="TokenLifeTimeInSeconds">300</Item-->                           
       </Metadata>
       <CryptographicKeys>
-        <Key Id="SamlAssertionSigning" StorageReferenceId="B2C_1A_{0}SigningKey"/>
-        <Key Id="SamlMessageSigning" StorageReferenceId="B2C_1A_{0}SigningKey"/>
+        <Key Id="SamlAssertionSigning" StorageReferenceId="{1}"/>
+        <Key Id="SamlMessageSigning" StorageReferenceId="{1}"/>
         <!--Key Id="MetadataSigning" StorageReferenceId="B2C_1A_{0}SigningKey"/-->
       </CryptographicKeys>
       <InputClaims/>

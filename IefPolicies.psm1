@@ -1523,7 +1523,7 @@ function New-IEFPoliciesSamlRP {
         Write-Warning ("{0} already exists. {1} will not be updated" -f $tpName, $extensionsFile)
     } else {
         $SAMLAssertionIssuer = Get-Content "$PSScriptRoot\strings\SAMLAssertionIssuer.xml"
-        $temp = $SAMLAssertionIssuer -f $epName
+        $temp = $SAMLAssertionIssuer -f $epName, $signingKeyName
         $node = $extensions.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$temp).FirstChild, $true)
         $node = $extensions.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
         $dest = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($sourceDirectoryPath + $extensionsFile)
