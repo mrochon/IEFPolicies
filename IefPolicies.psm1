@@ -1210,12 +1210,8 @@ function Add-IEFPoliciesIdP {
         [string]$federationsPolicyFile = 'TrustFrameworkExtensions.xml',
 
         [ValidateNotNullOrEmpty()]
-        [string]$updatedSourceDirectory = '.\federations\',
-
-        [ValidateNotNullOrEmpty()]
-        [string]$configurationFilePath = '.\conf.json'
+        [string]$updatedSourceDirectory = '.\federations\'
     )
-
     Write-Debug ("Protocol: {0}, name: {1}" -f $protocol, $name)
     if ($updatedSourceDirectory) {
         $updatedSourceDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($updatedSourceDirectory)
@@ -1227,12 +1223,28 @@ function Add-IEFPoliciesIdP {
             $updatedSourceDirectory = $updatedSourceDirectory + "\"
         }
     }
+    if([string]::IsNullOrEmpty($configurationFilePath)){
+        if([string]::IsNullOrEmpty($script:b2cName)){
+            $configurationFilePath = ("{0}{1}" -f $sourceDirectoryPath, "conf.json")
+        } else {
+            $configurationFilePath = ("{0}{1}.json" -f $sourceDirectoryPath, $script:b2cName)            
+        }
+    }
+
     if(-not(Test-Path $configurationFilePath)){
         $configurationFilePath = ".\conf.json"
         Write-Host ("{0} configuration file created" -f $configurationFilePath)
     } else {
-        $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
-        Write-Host ("Using {0} configuration file" -f $configurationFilePath)
+        try {
+            $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
+            Write-Host ("Using {0} configuration file" -f $configurationFilePath)
+        } catch {
+            Write-error ("Unable to read configuration json file" -f $configurationFilePath)
+            throw
+        }
+    }
+    if($conf -eq $null) {
+        $conf = @{ Prefix = "V1_" }
     }
     if(-not(Test-Path $federationsPolicyFile)){
         $federationsPolicPath = "$PSScriptRoot\strings\EmptyExtension.xml"
@@ -1386,7 +1398,7 @@ function Add-IEFPoliciesIdP {
         $node = $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
     }
     Add-Member -InputObject $conf -NotePropertyName $name -NotePropertyValue $tpConf
-    $conf | ConvertTo-Json -Depth 4 | Out-File -FilePath ("{0}/conf.json" -f $updatedSourceDirectory)
+    $conf | ConvertTo-Json -Depth 4 | Out-File -FilePath ("{0}/{1}" -f $updatedSourceDirectory, $configurationFilePath)
 
     # add user journey steps
     foreach($rp in $rpList.GetEnumerator()) {
