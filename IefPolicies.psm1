@@ -1243,7 +1243,7 @@ function Add-IEFPoliciesIdP {
             throw
         }
     }
-    if($conf -eq $null) {
+    if($null -eq $conf) {
         $conf = @{ Prefix = "V1_" }
     }
     if(-not(Test-Path $federationsPolicyFile)){
@@ -1361,12 +1361,12 @@ function Add-IEFPoliciesIdP {
             $str = Get-Content "$PSScriptRoot\strings\OIDCtp.xml"
             $tpId = ("{0}-OIDC" -f $name)            
             $tpConf.Add("clientId", "123456")
-            $keyMsg = ("Ensure that the OAuth2 client secret is defined in a Policy Contaner named: B2C_1A_{0}OIDCSecret (key usage: sig)" -f $name)
+            $keyMsg = ("Ensure that the OAuth2 client secret is defined in a Policy Container named: B2C_1A_{0}OIDCSecret (key usage: sig)" -f $name)
         }
         "SAML" {
             $str = Get-Content "$PSScriptRoot\strings\SAMLIdP.xml"
             $tpId = ("{0}-SAML" -f $name)
-            $keyMsg = ("Ensure that the SAML request signing key is defined in a Policy Contaner named: B2C_1A_{0}SAMLSigningCert" -f $name)
+            $keyMsg = ("Ensure that the SAML request signing key is defined in a Policy Container named: B2C_1A_{0}SAMLSigningCert" -f $name)
         }
         "default" {
             Write-Error ("Invalid protocol name {0}. Must be 'oidc', 'saml' or 'aad'." -f $protocol)
@@ -1389,6 +1389,11 @@ function Add-IEFPoliciesIdP {
 
     $node = $claimsProviders.OwnerDocument.ImportNode(([xml]$str).FirstChild, $true)
     $claimsProviders.AppendChild($node)
+    if($null -eq $script:b2cName) {
+        Write-Host ("B2C SAML metadata url: https://{0}.b2clogin.com/{0}.onmicrosoft.com/<user journey>/samlp/{1}-SAML" -f "<yourtenant>", $name)
+    } else {
+        Write-Host ("B2C SAML metadata url: https://{0}.b2clogin.com/{0}.onmicrosoft.com/<user journey>/samlp/{1}-SAML" -f $script:b2cName, $name)
+    }
 
     $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
     if(-not $federations.TrustFrameworkPolicy.ClaimsProviders.ChildNodes.Where({$_.DisplayName -eq 'Session Management'}, 'First')) {
