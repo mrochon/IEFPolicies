@@ -1218,7 +1218,7 @@ function Add-IEFPoliciesIdP {
         $updatedSourceDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($updatedSourceDirectory)
         if(!(Test-Path -Path $updatedSourceDirectory )){
             New-Item -ItemType directory -Path $updatedSourceDirectory | Out-Null
-            Write-Host "Updated source folder created"
+            Write-Host ("{0} folder created" -f $updatedSourceDirectory)
         }
         if (-not $updatedSourceDirectory.EndsWith("\")) {
             $updatedSourceDirectory = $updatedSourceDirectory + "\"
@@ -1255,7 +1255,7 @@ function Add-IEFPoliciesIdP {
         $federationsPolicyPath = resolve-path ($sourceDirectoryPath + $federationsPolicyFile)
         $federations = [xml] (Get-Content -Path $federationsPolicyPath | Out-String)
     }
-    Write-Host ("Using {0} for federation definitions" -f $federationsPolicyFile)
+    Write-Host ("Using {0} for IdP Technical Pofile definitions" -f $federationsPolicyFile)
 
 
     # Get journeys requiring updates of federated providers
@@ -1389,14 +1389,18 @@ function Add-IEFPoliciesIdP {
     }
 
     $node = $claimsProviders.OwnerDocument.ImportNode(([xml]$str).FirstChild, $true)
-    $claimsProviders.AppendChild($node)
+    $dummy = $claimsProviders.AppendChild($node)
+    Write-Host "-------------------------"
+    Write-Host "B2C SAML metadata url:"
     if($null -eq $script:b2cName) {
-        Write-Host ("B2C SAML metadata url: https://{0}.b2clogin.com/{0}.onmicrosoft.com/<user journey>/samlp/metadata?idptp={1}-SAML" -f "<yourtenant>", $name)
+        $b2cName = "<yourtenant>"
     } else {
-        Write-Host ("B2C SAML metadata url: https://{0}.b2clogin.com/{0}.onmicrosoft.com/<user journey>/samlp/metadata?idptp={1}-SAML" -f $script:b2cName, $name)
+        $b2cName = $script:b2cName
     }
+    Write-Host ("https://{0}.b2clogin.com/{0}.onmicrosoft.com/B2C_1A_<signin journey>/samlp/metadata?idptp={1}-SAML" -f $b2cName, $name)
+    Write-Host "-------------------------"
 
-    $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
+    $dummy = $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
     if(-not $federations.TrustFrameworkPolicy.ClaimsProviders.ChildNodes.Where({$_.DisplayName -eq 'Session Management'}, 'First')) {
         $samlSessionString = Get-Content "$PSScriptRoot\strings\SAMLSession.xml"
         $node = $federations.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$samlSessionString).FirstChild, $true)
@@ -1441,7 +1445,7 @@ function Add-IEFPoliciesIdP {
             }
             $steps = ($steps -f $journeySteps.Order, $name, ($journeySteps.Order + 1), $tpId, $journeySteps.Id)     
             $node = $xml.TrustFrameworkPolicy.OwnerDocument.ImportNode(([xml]$steps).FirstChild, $true)
-            $xml.TrustFrameworkPolicy.InsertBefore($node, $rpNode)
+            $dummy = $xml.TrustFrameworkPolicy.InsertBefore($node, $rpNode)
         }
         $rpFileName = (Split-Path -Path $rp.Key -Leaf)
         $xml.Save(("{0}{1}" -f $updatedSourceDirectory, $rpFileName))
