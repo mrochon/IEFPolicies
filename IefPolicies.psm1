@@ -826,7 +826,8 @@ function New-IefPoliciesCert {
             Set-Content -Path ".\ClientCert.cer" -Value $base64Cert
             Write-Host "ClientCert.cer file created"
         } catch {
-            Write-Error ("Error creating/writing or reading the cert with Subject: {0}. (New-SelfSignedCert is only supported on Windows)." -f $certSubject)
+            Write-Error "Error creating/writing or reading an X509 certificate."
+            Write-Error ("Please create it using other tools and store in B2C Policy Key storage with container name: {0}" -f $keyName)
             return
         }
         $body = @{
