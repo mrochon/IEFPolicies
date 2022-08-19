@@ -1390,9 +1390,9 @@ function Add-IEFPoliciesIdP {
     $node = $claimsProviders.OwnerDocument.ImportNode(([xml]$str).FirstChild, $true)
     $claimsProviders.AppendChild($node)
     if($null -eq $script:b2cName) {
-        Write-Host ("B2C SAML metadata url: https://{0}.b2clogin.com/{0}.onmicrosoft.com/<user journey>/samlp/{1}-SAML" -f "<yourtenant>", $name)
+        Write-Host ("B2C SAML metadata url: https://{0}.b2clogin.com/{0}.onmicrosoft.com/<user journey>/samlp/metadata?idptp={1}-SAML" -f "<yourtenant>", $name)
     } else {
-        Write-Host ("B2C SAML metadata url: https://{0}.b2clogin.com/{0}.onmicrosoft.com/<user journey>/samlp/{1}-SAML" -f $script:b2cName, $name)
+        Write-Host ("B2C SAML metadata url: https://{0}.b2clogin.com/{0}.onmicrosoft.com/<user journey>/samlp/metadata?idptp={1}-SAML" -f $script:b2cName, $name)
     }
 
     $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
