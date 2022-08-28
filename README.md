@@ -43,7 +43,7 @@ This module can be installed from the [PowerShell Gallery](https://www.powershel
 | 3.1.4 | New: list policy structure as part of Debug-IefPolicies output |
 | 3.1.5 | New: noPrefix flag in Import-IefPolicies |
 | 3.1.7 | Fixes: SAML RP created wrong policy key; AAD MT failed at runtime |
-
+| 3.1.9 | Minor mods: display SAML metadata url for new IdP, fix bug when running on Mac |
 
 ### Use examples
 
