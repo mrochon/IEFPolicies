@@ -322,6 +322,7 @@ Parameters:
 | configurationFilePath | N | json file with additional replacement strings. Default: *.\b2cname>.json*, otherwise  *.\conf.json*. The script will match any property in this file with a string with format *{<property name>}* and replace it with the value of the property. See above about a *secrets.json* file |
 | generateOnly | N | If used, the script will only generate policy files but not upload them to B2C |
 | prefix | N | String inserted into the name of generated policies, e.g. the new base policy name will be *B2C_1A_XYZTrustFrameBase, where XYZ is the value of the provided prefix. Can also be set in the conf.json file |
+| noprefix | N | Flag. When used, does not inject a prefix into thee policy names |
 
 ### Initialize-IEFPolicies
 Performs [B2C tenant setup as descibed in the official documentation](https://docs.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-get-started). This setup is needed only once. This command will also add a **fake** Facebook
