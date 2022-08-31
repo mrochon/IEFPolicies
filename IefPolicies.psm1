@@ -905,7 +905,10 @@ function New-Application {
     }
     Write-Debug ("New-Application {0}" -f $Appname)
     $app = Get-Application $AppName
-    if ($null -ne $app) { return $app }
+    if ($null -ne $app) { 
+        Write-Debug ("App {0} already exists" -f $AppName)
+        return $app 
+    }
     # openid perms
     $OIDCAccess = @{
         resourceAppId = "00000003-0000-0000-c000-000000000000";
@@ -1025,7 +1028,7 @@ function Get-Application {
         }
         if($resp.value.Count -gt 0) {
             $app = $resp.value[0]
-            Write-Debug ("Get-Application returning {0}" -f $app.id)            
+            Write-Debug ("Get-Application returning {0}" -f $app.appId)            
         } else {
              $app = $null 
              Write-Debug "App not found"
@@ -1328,12 +1331,13 @@ function Add-IEFPoliciesIdP {
                 'Content-Type' = "application/json";        
             }
             #Write-Debug $script:tokens.access_token
-            $appName = ("{0}-MT" -f $script:b2cName)
-            $aadCommon = New-Application -AppName $appName
-            Write-Debug ("Application: {0}, appId:{1}" -f $appName, $aadCommon.appId)    
+            # Must have -MT suffix to tell New-Application this is a MT app
+            $aadCommon = New-Application -AppName ("{0}-MT" -f $name)
+            Write-Host ("Created/found multi-tenant application: {0}-MT, appId:{1}" -f $name, $aadCommon.appId)    
             Write-Debug ("Checking for key {0}AppSecret" -f $name)   
             # assigning to $resp to prevent error output      
             $resp = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/B2C_1A_{0}AppSecret" -f $name) -Method GET -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable httpStatus
+            Write-Debug ("GET {0} returned status {1}" -f $name, $httpStatus)
             if (400 -eq $httpStatus) {
                 Write-Debug "Creating new password"
                 $appKey = (@{passwordCredential = @{ 
@@ -1347,16 +1351,16 @@ function Add-IEFPoliciesIdP {
                     Write-Debug ("Adding password to Policykeys: B2C_1A_{0}AppSecret" -f $name)
                     try {
                         New-IefPoliciesKey -name ("B2C_1A_{0}AppSecret" -f $name) -purpose "sig" -keyType "secret" -value $password.secretText
-                        write-Host ("App secret {0}AppSecret stored in policy keys" -f $name)                     
+                        $keyMsg = ("App secret {0}AppSecret stored in policy keys" -f $name)                     
                     } catch {
-                        Write-Error "Error creating policy key for the AAD app secret"
+                        $keyMsg = ("Error creating policy key {0}AppSecret for the multi-tenant AAD app secret" -f $name)
                     }
                 }
             } 
             $str = Get-Content "$PSScriptRoot\strings\aadmulti.xml"
             $tpId = ("{0}-OIDC" -f $name)            
             $tpConf = @{ clientId = $aadCommon.appId } # no other properties are replaced
-            $keyMsg = ("{0} app created/updated" -f $name)
+            #$keyMsg = ("{0}AppSecret policy key created/updated" -f $name)
         }        
         "OIDC" {
             $str = Get-Content "$PSScriptRoot\strings\OIDCtp.xml"
