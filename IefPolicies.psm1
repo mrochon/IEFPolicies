@@ -1372,6 +1372,15 @@ function Add-IEFPoliciesIdP {
             $str = Get-Content "$PSScriptRoot\strings\SAMLIdP.xml"
             $tpId = ("{0}-SAML" -f $name)
             $keyMsg = ("Ensure that the SAML request signing key is defined in a Policy Container named: B2C_1A_{0}SAMLSigningCert" -f $name)
+            Write-Host "-------------------------"
+            Write-Host "B2C SAML metadata url:"
+            if($null -eq $script:b2cName) {
+                $b2cName = "<yourtenant>"
+            } else {
+                $b2cName = $script:b2cName
+            }
+            Write-Host ("https://{0}.b2clogin.com/{0}.onmicrosoft.com/B2C_1A_<signin journey>/samlp/metadata?idptp={1}-SAML" -f $b2cName, $name)
+            Write-Host "-------------------------"            
         }
         "default" {
             Write-Error ("Invalid protocol name {0}. Must be 'oidc', 'saml' or 'aad'." -f $protocol)
@@ -1394,18 +1403,8 @@ function Add-IEFPoliciesIdP {
 
     $node = $claimsProviders.OwnerDocument.ImportNode(([xml]$str).FirstChild, $true)
     $dummy = $claimsProviders.AppendChild($node)
-    Write-Host "-------------------------"
-    Write-Host "B2C SAML metadata url:"
-    if($null -eq $script:b2cName) {
-        $b2cName = "<yourtenant>"
-    } else {
-        $b2cName = $script:b2cName
-    }
-    Write-Host ("https://{0}.b2clogin.com/{0}.onmicrosoft.com/B2C_1A_<signin journey>/samlp/metadata?idptp={1}-SAML" -f $b2cName, $name)
-    Write-Host "-------------------------"
-
     $dummy = $federations.TrustFrameworkPolicy.ClaimsProviders.AppendChild($node)
-    if(-not $federations.TrustFrameworkPolicy.ClaimsProviders.ChildNodes.Where({$_.DisplayName -eq 'Session Management'}, 'First')) {
+    if(-not $federations.TrustFrameworkPolicy.ClaimsProviders.ChildNodes.Where({$_.DisplayName -eq 'Session Management'}, 'First') -and ($protocol -eq 'SAML')) {
         $samlSessionString = Get-Content "$PSScriptRoot\strings\SAMLSession.xml"
         $node = $federations.TrustFrameworkPolicy.ClaimsProviders.OwnerDocument.ImportNode(([xml]$samlSessionString).FirstChild, $true)
         # prevents default output
@@ -1616,6 +1615,7 @@ function Debug-IEFPolicies {
     $errorCount = 0
 
     foreach($policy in $script:policies.List) {
+        Write-Output "Looking for duplicate metadata keys."
         Select-Xml -Content $policy.Body -NameSpace @{ dflt = 'http://schemas.microsoft.com/online/cpim/schemas/2013/06' } -XPath "//dflt:Metadata" | foreach {
             # Look for duplicate Metadata key values
             $keys = New-Object Collections.Generic.List[String]
@@ -1629,6 +1629,7 @@ function Debug-IEFPolicies {
             }
         }
         # Look for mis-spelled claim names or claim names used in Claimequals comparison value in Preconditions
+        Write-Output "Looking for use of claim names in fields where literals are expected."
         Select-Xml -Content $policy.Body -NameSpace @{ dflt = 'http://schemas.microsoft.com/online/cpim/schemas/2013/06' } -XPath "//dflt:Preconditions" | foreach {
             foreach($p in $_.node.ChildNodes) {
                 if("Element" -ne $p.NodeType) { continue }
