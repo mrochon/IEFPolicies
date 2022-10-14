@@ -1248,6 +1248,7 @@ function Add-IEFPoliciesIdP {
         }
     }
     if($null -eq $conf) {
+        write-Host "Creating new conf.json file."
         $conf = @{ Prefix = "V1_" }
     }
     if(-not(Test-Path $federationsPolicyFile)){
@@ -1319,7 +1320,7 @@ function Add-IEFPoliciesIdP {
     }
 
     # add technical profile
-    $tpConf = @{ domainName = ("{0}.com" -f $name); displayName = ("{0} employees" -f $name); metadataUrl = "https://metadata.com" }
+    $tpConf = @{ domainName = ("{0}.com" -f $name); displayName = ("{0} employees" -f $name) }
     $name = $name.ToUpper()
     switch($protocol) {
         "AAD" { # AAD, multi-tenant
@@ -1366,12 +1367,14 @@ function Add-IEFPoliciesIdP {
             $str = Get-Content "$PSScriptRoot\strings\OIDCtp.xml"
             $tpId = ("{0}-OIDC" -f $name)            
             $tpConf.Add("clientId", "123456")
+            $tpConf.Add("metadataUrl", "https://op.com/.well-known/openid-configuration")            
             $keyMsg = ("Ensure that the OAuth2 client secret is defined in a Policy Container named: B2C_1A_{0}OIDCSecret (key usage: sig)" -f $name)
         }
         "SAML" {
             $str = Get-Content "$PSScriptRoot\strings\SAMLIdP.xml"
             $tpId = ("{0}-SAML" -f $name)
             $keyMsg = ("Ensure that the SAML request signing key is defined in a Policy Container named: B2C_1A_{0}SAMLSigningCert" -f $name)
+            $tpConf.Add("metadataUrl", "https://samlidp.com/.well-known/federationmetadata.xml")    
             Write-Host "-------------------------"
             Write-Host "B2C SAML metadata url:"
             if($null -eq $script:b2cName) {
@@ -1613,9 +1616,14 @@ function Debug-IEFPolicies {
     }
 
     $errorCount = 0
+    Write-Output "----------------"    
+    Write-Output "Tests:"
+    Write-Output "1. Duplicate metadata keys."
+    Write-Output "2. Use of claim names in fields where literals are expected."
+    Write-Output "3. Invalid claim names in preconditions."
+    Write-Output "----------------"
 
     foreach($policy in $script:policies.List) {
-        Write-Output "Looking for duplicate metadata keys."
         Select-Xml -Content $policy.Body -NameSpace @{ dflt = 'http://schemas.microsoft.com/online/cpim/schemas/2013/06' } -XPath "//dflt:Metadata" | foreach {
             # Look for duplicate Metadata key values
             $keys = New-Object Collections.Generic.List[String]
@@ -1629,7 +1637,7 @@ function Debug-IEFPolicies {
             }
         }
         # Look for mis-spelled claim names or claim names used in Claimequals comparison value in Preconditions
-        Write-Output "Looking for use of claim names in fields where literals are expected."
+
         Select-Xml -Content $policy.Body -NameSpace @{ dflt = 'http://schemas.microsoft.com/online/cpim/schemas/2013/06' } -XPath "//dflt:Preconditions" | foreach {
             foreach($p in $_.node.ChildNodes) {
                 if("Element" -ne $p.NodeType) { continue }
