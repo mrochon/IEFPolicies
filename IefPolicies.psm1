@@ -448,7 +448,9 @@ function New-IEFPolicies {
 param(
     #[Parameter(Mandatory)]
     [ValidateNotNullOrEmpty()]
-    [string]$destinationPath
+    [string]$destinationPath,
+
+    [switch]$DisplayControls   
 )
     $owner = "Azure-Samples"
     $repository = "active-directory-b2c-custom-policy-starterpack"
@@ -491,6 +493,9 @@ param(
     foreach ($file in $files) {
         $fileName = Split-Path $file -Leaf
         $fileDestination = Join-Path $destinationPath $fileName
+        if ($displayControls) {
+            $file = $file.Replace("/main/","/main/Display%20Controls%20Starterpack/")
+        }        
         try {
             if("TrustFrameworkExtensions.xml" -eq $fileName) {
                 $ext = Invoke-RestMethod  -Uri $file -UseBasicParsing
