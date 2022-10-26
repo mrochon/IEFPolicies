@@ -45,7 +45,7 @@ This module can be installed from the [PowerShell Gallery](https://www.powershel
 | 3.1.7 | Fixes: SAML RP created wrong policy key; AAD MT failed at runtime |
 | 3.1.9 | Minor mods: display SAML metadata url for new IdP, fix bug when running on Mac |
 | 3.1.11 | Improved Debug- cmd, bug fixes for AddIdP |
-| 3.1.12 | Added 0DisplayControls flag to New-IefPolicies |
+| 3.1.12 | Added DisplayControls flag to New-IefPolicies |
 
 ### Use examples
 
@@ -357,6 +357,7 @@ New-IefPolicies -destinationPath $dest
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
 | destinationPath | N | Directory path where your xml policies are stored. Will be created if does not already exist. Current directory is default |
+| displayControls | N | Use the DisplayControls starter pack directory |
 
 ### New-IEFPoliciesCert
 
