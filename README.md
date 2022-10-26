@@ -45,7 +45,7 @@ This module can be installed from the [PowerShell Gallery](https://www.powershel
 | 3.1.7 | Fixes: SAML RP created wrong policy key; AAD MT failed at runtime |
 | 3.1.9 | Minor mods: display SAML metadata url for new IdP, fix bug when running on Mac |
 | 3.1.11 | Improved Debug- cmd, bug fixes for AddIdP |
-| 3.1.12 | Added DisplayControls flag to New-IefPolicies |
+| 3.1.12 | Added DisplayControls flag to New-IefPolicies; AAD returns email claim |
 
 ### Use examples
 
