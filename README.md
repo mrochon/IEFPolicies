@@ -45,6 +45,7 @@ This module can be installed from the [PowerShell Gallery](https://www.powershel
 | 3.1.7 | Fixes: SAML RP created wrong policy key; AAD MT failed at runtime |
 | 3.1.9 | Minor mods: display SAML metadata url for new IdP, fix bug when running on Mac |
 | 3.1.11 | Improved Debug- cmd, bug fixes for AddIdP |
+| 3.1.12 | Added 0DisplayControls flag to New-IefPolicies |
 
 ### Use examples
 
@@ -114,7 +115,7 @@ Debug-IefPolicies
 #### Merge in a sample policy
 
 The following script will deploy a new SocialAndLocalWithMFA starter pack, augmented with [a journey supporting sign in/up, profile edit and password reset in one RelyingParty](https://github.com/mrochon/b2csamples/tree/master/Policies/AllInOne). The uploaded
-policies will be named *B2C_1A_V1* unless the *V1* string is changed in the associated conf.json file.
+policies will be named *B2C_1A_V1_* unless the *V1_* string is changed in the associated conf.json file.
 
 ```PowerShell
 cd 'c:\some empty directory'
@@ -240,7 +241,7 @@ Debug-IefPolicies -sourceDirectoryPath  'c:\temp\ief'
 
 Use *Export-IEFPolicies* function to download your IEF policies from the B2C tenant to a local folder.
 
-E.g. download policies using V1 profix ('B2C_1A_V1...') to current folder and remove tenant-specific identifiers (IEF App ids, etc.) from the xml.
+E.g. download policies using V1 prefix ('B2C_1A_V1...') to current folder and remove tenant-specific identifiers (IEF App ids, etc.) from the xml.
 
 ```PowerShell
 cd C:\LocalAccounts\policies

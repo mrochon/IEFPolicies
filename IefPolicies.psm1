@@ -256,7 +256,7 @@ function Export-IEFPolicies {
     Downloads IEF xml policy files from a B2C tenant optionally selecting only files with specified prefix in their name
 
     .PARAMETER prefix
-    Used to select only certain files for doanload, prefix="V1" will download all IEF files with names starting with "B2C_1A_V1"
+    Used to select only certain files for doanload, prefix="V1_" will download all IEF files with names starting with "B2C_1A_V1_"
 
     .PARAMETER destinationPath
     Directory where files should be downloaded to
@@ -468,6 +468,9 @@ param(
             "Q" { Exit }
         }
     }
+    if($DisplayControls) {
+        $path = "Display%20Controls%20Starterpack/" + $path
+    }    
 
     $url = "https://api.github.com/repos/{0}/{1}/contents/{2}" -f $owner, $repository, $path
     $wr = Invoke-WebRequest -UseBasicParsing  -Uri $url 
@@ -493,9 +496,6 @@ param(
     foreach ($file in $files) {
         $fileName = Split-Path $file -Leaf
         $fileDestination = Join-Path $destinationPath $fileName
-        if ($displayControls) {
-            $file = $file.Replace("/main/","/main/Display%20Controls%20Starterpack/")
-        }        
         try {
             if("TrustFrameworkExtensions.xml" -eq $fileName) {
                 $ext = Invoke-RestMethod  -Uri $file -UseBasicParsing
@@ -521,7 +521,7 @@ param(
     if ($count -gt 0) {
         $fileDestination = Join-Path $destinationPath 'conf.json'
         $conf = @{
-            Prefix = "V1" 
+            Prefix = "V1_" 
             SomeProperty = "Use {SomeProperty} in your xml to have it replaced by this value"
         }
         $conf | ConvertTo-Json | Out-File -FilePath $fileDestination
@@ -636,7 +636,7 @@ function Remove-IEFPolicies {
         Deletes IEF xml policy files from a B2C tenant with the specified prefix in their name
     
         .PARAMETER prefix
-        Used to select only certain files for delete, prefix="V1" will delete all IEF policies with names starting with "B2C_1A_V1"
+        Used to select only certain files for delete, prefix="V1_" will delete all IEF policies with names starting with "B2C_1A_V1_"
 
         .EXAMPLE
             PS C:\> Delete-IEFPolicies -prefix V10
