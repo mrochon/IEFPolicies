@@ -24,6 +24,10 @@
         <CryptographicKeys>
           <Key Id="client_secret" StorageReferenceId="B2C_1A_{0}AppSecret"/>
         </CryptographicKeys>
+        <!-- Add optional token request parameters (prompt, logi-/domain-hint, etc.) /-->
+        <!--InputClaims>
+          <InputClaim ClaimTypeReferenceId="prompt" DefaultValue="select_account" />
+        </InputClaims-->
         <OutputClaims>
           <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="oid"/>
           <OutputClaim ClaimTypeReferenceId="tenantId" PartnerClaimType="tid"/>

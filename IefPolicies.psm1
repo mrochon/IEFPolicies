@@ -1242,7 +1242,7 @@ function Add-IEFPoliciesIdP {
 
     if(-not(Test-Path $configurationFilePath)){
         $configurationFilePath = ".\conf.json"
-        Write-Host ("{0} configuration file created" -f $configurationFilePath)
+        # Write-Host ("{0} configuration file created" -f $configurationFilePath)
     } else {
         try {
             $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
@@ -1253,7 +1253,7 @@ function Add-IEFPoliciesIdP {
         }
     }
     if($null -eq $conf) {
-        write-Host "Creating new conf.json file."
+        write-Host ("Creating new {0} file." -f $configurationFilePath)
         $conf = @{ Prefix = "V1_" }
     }
     if(-not(Test-Path $federationsPolicyFile)){
