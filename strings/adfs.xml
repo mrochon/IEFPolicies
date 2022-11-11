@@ -1,0 +1,34 @@
+<ClaimsProvider xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+    <!-- https://learn.microsoft.com/en-us/azure/active-directory-b2c/identity-provider-adfs?pivots=b2c-custom-policy /-->
+    <Domain>{{{0}:domainName}}</Domain>
+    <DisplayName>{{{0}:displayName}}</DisplayName>
+    <TechnicalProfiles>
+      <TechnicalProfile Id="{{{0}-OIDC}}">
+        <DisplayName>Contoso</DisplayName>
+        <Protocol Name="OpenIdConnect" />
+        <Metadata>
+            <Item Key="METADATA">{{{0}:metadataUrl}}</Item>
+            <Item Key="client_id">{{{0}:clientId}}</Item>   
+          <Item Key="response_types">id_token</Item>
+          <Item Key="response_mode">form_post</Item>
+          <Item Key="scope">openid</Item>
+          <Item Key="HttpBinding">POST</Item>
+          <Item Key="UsePolicyInRedirectUri">0</Item>
+        </Metadata>
+        <OutputClaims>
+          <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="upn" />
+          <OutputClaim ClaimTypeReferenceId="givenName" PartnerClaimType="given_name" />
+          <OutputClaim ClaimTypeReferenceId="surname" PartnerClaimType="family_name" />
+          <OutputClaim ClaimTypeReferenceId="displayName" PartnerClaimType="unique_name" />
+          <OutputClaim ClaimTypeReferenceId="identityProvider" PartnerClaimType="iss"  />
+          <OutputClaim ClaimTypeReferenceId="authenticationSource" DefaultValue="socialIdpAuthentication" AlwaysUseDefaultValue="true" />
+        </OutputClaims>
+        <OutputClaimsTransformations>
+          <OutputClaimsTransformation ReferenceId="CreateRandomUPNUserName" />
+          <OutputClaimsTransformation ReferenceId="CreateUserPrincipalName" />
+          <OutputClaimsTransformation ReferenceId="CreateAlternativeSecurityId" />
+        </OutputClaimsTransformations>
+        <UseTechnicalProfileForSessionManagement ReferenceId="SM-SocialLogin" />
+      </TechnicalProfile>
+    </TechnicalProfiles>
+  </ClaimsProvider>

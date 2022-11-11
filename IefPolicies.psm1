@@ -1325,7 +1325,7 @@ function Add-IEFPoliciesIdP {
     }
 
     # add technical profile
-    $tpConf = @{ domainName = ("{0}.com" -f $name); displayName = ("{0} employees" -f $name) }
+    $tpConf = @{ domainName = ("{0}.com" -f $name); displayName = ("{0} employees/users" -f $name) }
     $name = $name.ToUpper()
     switch($protocol) {
         "AAD" { # AAD, multi-tenant
@@ -1371,7 +1371,7 @@ function Add-IEFPoliciesIdP {
         "OIDC" {
             $str = Get-Content "$PSScriptRoot\strings\OIDCtp.xml"
             $tpId = ("{0}-OIDC" -f $name)            
-            $tpConf.Add("clientId", "123456")
+            $tpConf.Add("clientId", "apps.googleusercontent.com")
             $tpConf.Add("metadataUrl", "https://op.com/.well-known/openid-configuration")            
             $keyMsg = ("Ensure that the OAuth2 client secret is defined in a Policy Container named: B2C_1A_{0}OIDCSecret (key usage: sig)" -f $name)
         }
@@ -1390,9 +1390,24 @@ function Add-IEFPoliciesIdP {
             Write-Host ("https://{0}.b2clogin.com/{0}.onmicrosoft.com/B2C_1A_<signin journey>/samlp/metadata?idptp={1}-SAML" -f $b2cName, $name)
             Write-Host "-------------------------"            
         }
-        "default" {
-            Write-Error ("Invalid protocol name {0}. Must be 'oidc', 'saml' or 'aad'." -f $protocol)
-        }
+        default {
+            $name = $protocol
+            $path = "$PSScriptRoot\strings\$($protocol).xml"
+            if(Test-Path $path) {
+                $str = Get-Content $path
+            } else {
+                Write-Error "IdP type $($protocol) not found"
+            }
+            $regex = "TechnicalProfile Id=`"[`\w-]+`""
+            $t = (Select-string -InputObject $str -Pattern $regex).Matches.Value     
+            if($null -eq $t) {
+                $tpId = $name
+                $tpConf.Add("metadataUrl", "https://op.com/.well-known/openid-configuration")                  
+            } else {
+                $tpId = $t.Split("`"")[1]
+            }
+            $keyMsg = "Ensure that the client secret is added in a Policy Container named: B2C_1A_$($name)Secret"
+        }  
     }
     Write-Debug ("Fixing TP name to {0}" -f $name)
     $str = ($str -f $name)
@@ -1467,8 +1482,8 @@ function Add-IEFPoliciesIdP {
         $federations.Save(("{0}{1}" -f $updatedSourceDirectory, $federationsPolicyFile))
     }
     Write-Host ("{0} updated" -f $federationsPolicyFile)
-    Write-Host ("Please review and update the {0} file" -f $configurationFilePath)
-    Write-Host $keyMsg
+    Write-Host $keyMsg -ForegroundColor Yellow
+    Write-Host "Please review files in the $($updatedSourceDirectory) folder and, if correct, update the conf.json file and copy them to the work folder" -ForegroundColor Yellow
 }
 
 function New-IEFPoliciesSamlRP {

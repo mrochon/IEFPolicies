@@ -1,0 +1,36 @@
+<ClaimsProvider xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+    <Domain>amazon.com</Domain>
+    <DisplayName>Amazon</DisplayName>
+    <TechnicalProfiles>
+      <TechnicalProfile Id="Amazon-OAuth2">
+      <DisplayName>Amazon</DisplayName>
+      <Protocol Name="OAuth2" />
+      <Metadata>
+        <Item Key="ProviderName">amazon</Item>
+        <Item Key="authorization_endpoint">https://www.amazon.com/ap/oa</Item>
+        <Item Key="AccessTokenEndpoint">https://api.amazon.com/auth/o2/token</Item>
+        <Item Key="ClaimsEndpoint">https://api.amazon.com/user/profile</Item>
+        <Item Key="scope">profile</Item>
+        <Item Key="HttpBinding">POST</Item>
+        <Item Key="UsePolicyInRedirectUri">false</Item>
+        <Item Key="client_id">{{{0}:clientId}}</Item>
+      </Metadata>
+      <CryptographicKeys>
+        <Key Id="client_secret" StorageReferenceId="B2C_1A_AmazonSecret" />
+      </CryptographicKeys>
+      <OutputClaims>
+        <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="user_id" />
+        <OutputClaim ClaimTypeReferenceId="email" PartnerClaimType="email" />
+        <OutputClaim ClaimTypeReferenceId="displayName" PartnerClaimType="name" />
+        <OutputClaim ClaimTypeReferenceId="identityProvider" DefaultValue="amazon.com" />
+        <OutputClaim ClaimTypeReferenceId="authenticationSource" DefaultValue="socialIdpAuthentication" />
+      </OutputClaims>
+        <OutputClaimsTransformations>
+        <OutputClaimsTransformation ReferenceId="CreateRandomUPNUserName" />
+        <OutputClaimsTransformation ReferenceId="CreateUserPrincipalName" />
+        <OutputClaimsTransformation ReferenceId="CreateAlternativeSecurityId" />
+      </OutputClaimsTransformations>
+      <UseTechnicalProfileForSessionManagement ReferenceId="SM-SocialLogin" />
+      </TechnicalProfile>
+    </TechnicalProfiles>
+  </ClaimsProvider>

@@ -1,0 +1,38 @@
+<ClaimsProvider>
+    <!-- https://learn.microsoft.com/en-us/azure/active-directory-b2c/identity-provider-ping-one?pivots=b2c-custom-policy /-->
+    <Domain>pingone.com</Domain>
+    <DisplayName>{{{0}:displayName}}</DisplayName>
+    <TechnicalProfiles>
+      <TechnicalProfile Id="PingOne-OpenIdConnect">
+        <DisplayName>{{{0}:displayName}}</DisplayName>
+        <Protocol Name="OpenIdConnect" />
+        <Metadata>
+            <Item Key="METADATA">{{{0}:metadataUrl}}</Item>
+            <Item Key="client_id">{{{0}:clientId}}</Item>      
+          <Item Key="response_types">code</Item>
+          <Item Key="scope">openid email profile</Item>
+          <Item Key="HttpBinding">POST</Item>
+          <Item Key="UsePolicyInRedirectUri">0</Item>
+        </Metadata>
+        <CryptographicKeys>
+          <Key Id="client_secret" StorageReferenceId="B2C_1A_PingOneSecret" />
+        </CryptographicKeys>
+        <OutputClaims>
+          <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="sub" />
+          <OutputClaim ClaimTypeReferenceId="email" PartnerClaimType="email" />
+          <OutputClaim ClaimTypeReferenceId="givenName" PartnerClaimType="given_name" />
+          <OutputClaim ClaimTypeReferenceId="surname" PartnerClaimType="family_name" />
+          <OutputClaim ClaimTypeReferenceId="displayName" PartnerClaimType="name" />
+          <OutputClaim ClaimTypeReferenceId="identityProvider" PartnerClaimType="iss" />
+          <OutputClaim ClaimTypeReferenceId="authenticationSource" DefaultValue="socialIdpAuthentication" />
+        </OutputClaims>
+        <OutputClaimsTransformations>
+          <OutputClaimsTransformation ReferenceId="CreateRandomUPNUserName" />
+          <OutputClaimsTransformation ReferenceId="CreateUserPrincipalName" />
+          <OutputClaimsTransformation ReferenceId="CreateAlternativeSecurityId" />
+          <OutputClaimsTransformation ReferenceId="CreateSubjectClaimFromAlternativeSecurityId" />
+        </OutputClaimsTransformations>
+        <UseTechnicalProfileForSessionManagement ReferenceId="SM-SocialLogin" />
+      </TechnicalProfile>
+    </TechnicalProfiles>
+  </ClaimsProvider>

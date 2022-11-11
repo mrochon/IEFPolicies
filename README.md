@@ -19,33 +19,34 @@ This module can be installed from the [PowerShell Gallery](https://www.powershel
 
 | Name  | Description  |
 |---|---|
-| 2.2.4  | Added support for using {tenantId} as automatic replacement property ({Policy:TrustFrameworkTenantId} defined in IEF cannot be used in some policy properties) |
-| 2.2.6  | Fixed: breaking change in MS Graph no longer returning tenantid in @odata.id |
-| 2.2.7  | Modified: check conf.json validity to avoid null prefix setting |
-|   | Improved: exception handling and error reporting |
-| 2.2.8   | New: Remove-IefPolicies |
-| 2.2.9   | New: Include sample conf.json in the Add-IefPoliciesSample operation |
-| 2.2.10   | New: use values from secrets.json in same directory as conf file |
-| 2.2.11   | New: Initialize-IefPolicies and Get-IefPoliciesAADCommon |
-| 3.0.0   | New: Requires PS 7.x. |
-|   | New: New function: New-IefPoliciesCert |
-| 3.0.2 | Update: New-iefPoliciesKey allows providing a value |
-| 3.0.3 | Update: Import-IefPolicies will first look for .\yourtenantname.json before .\conf.json |
-| 3.0.5 | Update: Export-IefPolicies -clean option modifies downloaded files to startpack-like content |
-|  | Update: Import-IefPolicies will replace *{ExtAppId}* and *{ExtObjectId}* strings with the correct *B2C extensions app* values |
-|  | New: Add-IefPoliciesIdP adds a SAMl or OIDC IdP to an existing policy set and updates journey definitions with the new exchange |
-| 3.0.6  | Change: import all policies if conf file changed since last upload |
-| 3.1.0  | Change: import adds AAD-Common extensions app TP to Extensions.xml |
-| 3.1.2  | New: New-IefPoliciesSamlRP |
-| 3.1.3  | New: Debug-IefPolicies |
-|  | Change: Add-IefPoliciesIdp -protocol aad adds AAD MT support to a policy set |
-|  | Fix: reverted back to specifying all needed permissions instead of AccessAsUser |
-| 3.1.4 | New: list policy structure as part of Debug-IefPolicies output |
-| 3.1.5 | New: noPrefix flag in Import-IefPolicies |
-| 3.1.7 | Fixes: SAML RP created wrong policy key; AAD MT failed at runtime |
-| 3.1.9 | Minor mods: display SAML metadata url for new IdP, fix bug when running on Mac |
-| 3.1.11 | Improved Debug- cmd, bug fixes for AddIdP |
+| 3.1.13 | Added support for some new idP types (Amazon, Git, etc.) |
 | 3.1.12 | Added DisplayControls flag to New-IefPolicies; AAD returns email claim |
+| 3.1.11 | Improved Debug- cmd, bug fixes for AddIdP |
+| 3.1.9 | Minor mods: display SAML metadata url for new IdP, fix bug when running on Mac |
+| 3.1.7 | Fixes: SAML RP created wrong policy key; AAD MT failed at runtime |
+| 3.1.5 | New: noPrefix flag in Import-IefPolicies |
+| 3.1.4 | New: list policy structure as part of Debug-IefPolicies output |
+|  | Fix: reverted back to specifying all needed permissions instead of AccessAsUser |
+|  | Change: Add-IefPoliciesIdp -protocol aad adds AAD MT support to a policy set |
+| 3.1.3  | New: Debug-IefPolicies |
+| 3.1.2  | New: New-IefPoliciesSamlRP |
+| 3.1.0  | Change: import adds AAD-Common extensions app TP to Extensions.xml |
+| 3.0.6  | Change: import all policies if conf file changed since last upload |
+|  | New: Add-IefPoliciesIdP adds a SAMl or OIDC IdP to an existing policy set and updates journey definitions with the new exchange |
+|  | Update: Import-IefPolicies will replace *{ExtAppId}* and *{ExtObjectId}* strings with the correct *B2C extensions app* values |
+| 3.0.5 | Update: Export-IefPolicies -clean option modifies downloaded files to startpack-like content |
+| 3.0.3 | Update: Import-IefPolicies will first look for .\yourtenantname.json before .\conf.json |
+| 3.0.2 | Update: New-iefPoliciesKey allows providing a value |
+|   | New: New function: New-IefPoliciesCert |
+| 3.0.0   | New: Requires PS 7.x. |
+| 2.2.11   | New: Initialize-IefPolicies and Get-IefPoliciesAADCommon |
+| 2.2.10   | New: use values from secrets.json in same directory as conf file |
+| 2.2.9   | New: Include sample conf.json in the Add-IefPoliciesSample operation |
+| 2.2.8   | New: Remove-IefPolicies |
+|   | Improved: exception handling and error reporting |
+| 2.2.7  | Modified: check conf.json validity to avoid null prefix setting |
+| 2.2.6  | Fixed: breaking change in MS Graph no longer returning tenantid in @odata.id |
+| 2.2.4  | Added support for using {tenantId} as automatic replacement property ({Policy:TrustFrameworkTenantId} defined in IEF cannot be used in some policy properties) |       
 
 ### Use examples
 
@@ -184,7 +185,7 @@ Parameters:
 
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
-| protocol | N | Protocol name: *OIDC* (default), *AAD* or *SAML* |
+| protocol | N | IdP type name: *OIDC* (default), *AAD*, *SAML*, *ADFS*, *Amazon*, *Git*, *Google*, *MSA*, *Ping* |
 | Name | Y | Issuer name |
 | sourceDirectoryPath | N | Current policies source xml files |
 | updatedSourceDirectory | N | Directory where any new/updated files will be stored (default: ./federations) |

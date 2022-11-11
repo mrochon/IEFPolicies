@@ -1,0 +1,43 @@
+<ClaimsProvider xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
+    <!-- https://learn.microsoft.com/en-us/azure/active-directory-b2c/identity-provider-github?pivots=b2c-custom-policy /-->
+    <Domain>github.com</Domain>
+    <DisplayName>GitHub</DisplayName>
+    <TechnicalProfiles>
+      <TechnicalProfile Id="GitHub-OAuth2">
+        <DisplayName>GitHub</DisplayName>
+        <Protocol Name="OAuth2" />
+        <Metadata>
+          <Item Key="ProviderName">github.com</Item>
+          <Item Key="authorization_endpoint">https://github.com/login/oauth/authorize</Item>
+          <Item Key="AccessTokenEndpoint">https://github.com/login/oauth/access_token</Item>
+          <Item Key="ClaimsEndpoint">https://api.github.com/user</Item>
+          <Item Key="HttpBinding">GET</Item>
+          <Item Key="scope">read:user user:email</Item>
+          <Item Key="UsePolicyInRedirectUri">0</Item>
+          <Item Key="BearerTokenTransmissionMethod">AuthorizationHeader</Item>  
+          <Item Key="UserAgentForClaimsExchange">CPIM-Basic/{tenant}/{policy}</Item>
+          <!-- Update the Client ID below to the Application ID -->
+          <Item Key="client_id">{{{0}:clientId}}</Item>
+        </Metadata>
+        <CryptographicKeys>
+          <Key Id="client_secret" StorageReferenceId="B2C_1A_GitHubSecret"/>
+        </CryptographicKeys>
+        <OutputClaims>
+          <OutputClaim ClaimTypeReferenceId="displayName" PartnerClaimType="name" />
+          <OutputClaim ClaimTypeReferenceId="email" PartnerClaimType="email" />
+          <OutputClaim ClaimTypeReferenceId="numericUserId" PartnerClaimType="id" />
+          <OutputClaim ClaimTypeReferenceId="issuerUserId" />
+          <OutputClaim ClaimTypeReferenceId="identityProvider" DefaultValue="github.com" AlwaysUseDefaultValue="true" />
+          <OutputClaim ClaimTypeReferenceId="authenticationSource" DefaultValue="socialIdpAuthentication" AlwaysUseDefaultValue="true" />
+        </OutputClaims>
+        <OutputClaimsTransformations>
+          <OutputClaimsTransformation ReferenceId="CreateIssuerUserId" />
+          <OutputClaimsTransformation ReferenceId="CreateRandomUPNUserName"/>
+          <OutputClaimsTransformation ReferenceId="CreateUserPrincipalName"/>
+          <OutputClaimsTransformation ReferenceId="CreateAlternativeSecurityId"/>
+          <OutputClaimsTransformation ReferenceId="CreateSubjectClaimFromAlternativeSecurityId"/>
+        </OutputClaimsTransformations>
+        <UseTechnicalProfileForSessionManagement ReferenceId="SM-SocialLogin" />
+      </TechnicalProfile>
+    </TechnicalProfiles>
+  </ClaimsProvider>
