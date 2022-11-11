@@ -1,4 +1,4 @@
-<ClaimsProvider>
+<ClaimsProvider xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06">
     <!-- https://learn.microsoft.com/en-us/azure/active-directory-b2c/identity-provider-ping-one?pivots=b2c-custom-policy /-->
     <Domain>pingone.com</Domain>
     <DisplayName>{{{0}:displayName}}</DisplayName>

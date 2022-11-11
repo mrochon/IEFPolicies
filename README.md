@@ -185,7 +185,7 @@ Parameters:
 
 | Property name | Required | Purpose |
 | -------- | ------ | ----- |
-| protocol | N | IdP type name: *OIDC* (default), *AAD*, *SAML*, *ADFS*, *Amazon*, *Git*, *Google*, *MSA*, *Ping* |
+| protocol | N | IdP type name: *OIDC* (default), *AAD* (multi-tenant), *SAML*, *ADFS*, *Amazon*, *eBay*, *Git*, *Google*, *LinkedIn*, *MSA*, *Ping*, *Twitter* |
 | Name | Y | Issuer name |
 | sourceDirectoryPath | N | Current policies source xml files |
 | updatedSourceDirectory | N | Directory where any new/updated files will be stored (default: ./federations) |
