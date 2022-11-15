@@ -19,6 +19,7 @@ This module can be installed from the [PowerShell Gallery](https://www.powershel
 
 | Name  | Description  |
 |---|---|
+| 3.1.14 | Base.xml marked as read-only in New-IefPols |
 | 3.1.13 | Added support for some new idP types (Amazon, Git, etc.) |
 | 3.1.12 | Added DisplayControls flag to New-IefPolicies; AAD returns email claim |
 | 3.1.11 | Improved Debug- cmd, bug fixes for AddIdP |
