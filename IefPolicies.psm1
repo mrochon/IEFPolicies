@@ -1140,9 +1140,18 @@ function setupEnvironment() {
         'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
     }
     $domains = Invoke-RestMethod -UseBasicParsing  -Uri https://graph.microsoft.com/v1.0/domains -Method Get -Headers $headers
-    $script:b2cDomain = $domains.value[0].id
-    $script:b2cName = $script:b2cDomain.Split('.')[0]
-    Write-Host ("Logged in to {0}." -f $script:b2cName)
+    foreach($d in $domains.value) {
+        if($d.id.Contains(".onmicrosoft.com")) {
+            $script:b2cDomain = $d.id
+            $script:b2cName = $script:b2cDomain.Split('.')[0]  
+            break          
+        }
+    }
+    if($null -eq $script:b2cName) {
+        Write-Error "Unable to find .onmicrosoft.com domain"
+        throw
+    }
+    Write-Host ("Logged in to {0}." -f $script:b2cDomain)
     $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'IdentityExperienceFramework')" -Method Get -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable httpCode1
     $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/beta/applications?`$filter=startsWith(displayName,'ProxyIdentityExperienceFramework')" -Method Get -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable httpCode2
     if ((200 -ne $httpCode1) -or (200 -ne $httpCode2)) {

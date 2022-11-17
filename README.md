@@ -20,6 +20,7 @@ This module can be installed from the [PowerShell Gallery](https://www.powershel
 | Name  | Description  |
 |---|---|
 | 3.1.13 | Added support for some new idP types (Amazon, Git, etc.) |
+| | Bug fix: handling of tenants with multiple custom domains |
 | 3.1.12 | Added DisplayControls flag to New-IefPolicies; AAD returns email claim |
 | 3.1.11 | Improved Debug- cmd, bug fixes for AddIdP |
 | 3.1.9 | Minor mods: display SAML metadata url for new IdP, fix bug when running on Mac |
