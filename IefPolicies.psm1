@@ -512,6 +512,9 @@ param(
             } else {
                 Invoke-WebRequest -UseBasicParsing  -Uri $file -OutFile $fileDestination -ErrorAction Stop -Verbose
             }
+            if("TrustFrameworkBase.xml" -eq $fileName) {
+                (Get-ChildItem $fileDestination).Set_IsReadOnly($True)
+            }
             Write-Host "Downloaded '$($file)' to '$fileDestination'"
             ++$count
         } catch {
