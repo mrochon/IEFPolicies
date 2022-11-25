@@ -88,12 +88,13 @@
                 # Replace tenant id but only if already there. It messes up xml formatting
                 $xml = [xml] $p.Body
                 #$xml.PreserveWhitespace = $true
-                try {
+                # https://github.com/mrochon/IEFPolicies/issues/43
+                if ($xml.TrustFrameworkPolicy.TenantObjectId) {
                     $resp = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/organization" -Method Get -Headers $headers
                     $xml.TrustFrameworkPolicy.TenantObjectId = $resp.value[0].Id
                     $policy = $xml.OuterXml
-                } catch {
-                    # tenantId not used
+                }
+                else {
                     $policy = $p.Body
                 }
                 $policy = $policy -replace "yourtenant", $script:b2cName 
