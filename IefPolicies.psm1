@@ -523,7 +523,11 @@ param(
         }
     }
     if ($count -gt 0) {
-        $fileDestination = Join-Path $destinationPath 'conf.json'
+        if($script:b2cName) {
+            $fileDestination = Join-Path $destinationPath "$($script:b2cName).json"   
+        } else {
+            $fileDestination = Join-Path $destinationPath 'conf.json'
+        }
         $conf = @{
             Prefix = "V1_" 
             SomeProperty = "Use {SomeProperty} in your xml to have it replaced by this value"
