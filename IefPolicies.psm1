@@ -1461,6 +1461,7 @@ function Add-IEFPoliciesIdP {
             $policy = Get-Content $rp.Key
         }
         $xml = [xml] $policy
+        $localOnly = $false        
         if($xml.TrustFrameworkPolicy.UserJourneys.UserJourney) { 
             $addToClaimsExchange = $false
             foreach($step in $xml.TrustFrameworkPolicy.UserJourneys.UserJourney.OrchestrationSteps.ChildNodes) {
@@ -1472,9 +1473,13 @@ function Add-IEFPoliciesIdP {
                     continue
                 }
                 if($addToClaimsExchange) {
-                    $selection = "<ClaimsExchange Id=""{0}Exchange"" TechnicalProfileReferenceId=""{1}"" xmlns=""http://schemas.microsoft.com/online/cpim/schemas/2013/06"" />" -f $name, $tpId
-                    $node = $step.ClaimsExchanges.OwnerDocument.ImportNode(([xml]$selection).LastChild, $true)
-                    $node = $step.ClaimsExchanges.AppendChild($node)                    
+                    try { // If no ClaimsExchanges, RPs referencing only local signin, e.g. PwdChange will not have a 2nd step with Claimsexchanges, ignore these when adding IdPs
+                        $selection = "<ClaimsExchange Id=""{0}Exchange"" TechnicalProfileReferenceId=""{1}"" xmlns=""http://schemas.microsoft.com/online/cpim/schemas/2013/06"" />" -f $name, $tpId
+                        $node = $step.ClaimsExchanges.OwnerDocument.ImportNode(([xml]$selection).LastChild, $true)
+                        $node = $step.ClaimsExchanges.AppendChild($node)    
+                    }  catch {
+                        $localOnly = $true
+                    }                        
                     break
                 }
             }
@@ -1490,9 +1495,13 @@ function Add-IEFPoliciesIdP {
             $node = $xml.TrustFrameworkPolicy.OwnerDocument.ImportNode(([xml]$steps).FirstChild, $true)
             $dummy = $xml.TrustFrameworkPolicy.InsertBefore($node, $rpNode)
         }
-        $rpFileName = (Split-Path -Path $rp.Key -Leaf)
-        $xml.Save(("{0}{1}" -f $updatedSourceDirectory, $rpFileName))
-        Write-Host ("{0} updated" -f $rpFileName)
+        $rpFileName = (Split-Path -Path $rp.Key -Leaf)        
+        if($localOnly) {
+            Write-Host "$($rpFileName) skipped - uses local accounts only"
+        } else {
+            $xml.Save(("{0}{1}" -f $updatedSourceDirectory, $rpFileName))
+            Write-Host ("{0} updated" -f $rpFileName)
+        }
     }
     if(-not $singleRPFed) { # alread saved as RP
         #$federations.PreserveWhitespace = $true
