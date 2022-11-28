@@ -1205,7 +1205,7 @@ function Add-IEFPoliciesIdP {
     .PARAMETER name
     Name to use to reference this IdP in the policies (protocol name will be appended to this name)
     
-    .PARAMETER sourceDirectory
+    .PARAMETER sourceDirectoryPath
     Directory with current policies (defauly: .\)
         
     .PARAMETER updatedSourceDirectory
@@ -1213,13 +1213,7 @@ function Add-IEFPoliciesIdP {
     
     .PARAMETER federationsPolicyFile
     Xml policy file where the new technical profile will be created (defaults: TrustExtensionsFramework.xml)
-
-    .PARAMETER prefix
-    String injected into names of all uploaded policies
-
-    .PARAMETER configurationFilePath
-    Name of the configuration json file where IdP variable data will be defined (default: conf.json)
-    
+   
     #>
     [CmdletBinding()]
     param(
@@ -1249,12 +1243,11 @@ function Add-IEFPoliciesIdP {
             $updatedSourceDirectory = $updatedSourceDirectory + "\"
         }
     }
-    if([string]::IsNullOrEmpty($configurationFilePath)){
-        if([string]::IsNullOrEmpty($script:b2cName)){
-            $configurationFilePath = ("{0}{1}" -f $sourceDirectoryPath, "conf.json")
-        } else {
-            $configurationFilePath = ("{0}{1}.json" -f $sourceDirectoryPath, $script:b2cName)            
-        }
+
+    if([string]::IsNullOrEmpty($script:b2cName)){
+        $configurationFilePath = ("{0}{1}" -f $sourceDirectoryPath, "conf.json")
+    } else {
+        $configurationFilePath = ("{0}{1}.json" -f $sourceDirectoryPath, $script:b2cName)            
     }
 
     if(-not(Test-Path $configurationFilePath)){
@@ -1465,6 +1458,7 @@ function Add-IEFPoliciesIdP {
         if($xml.TrustFrameworkPolicy.UserJourneys.UserJourney) { 
             $addToClaimsExchange = $false
             foreach($step in $xml.TrustFrameworkPolicy.UserJourneys.UserJourney.OrchestrationSteps.ChildNodes) {
+                if("Element" -ne $step.NodeType) { continue }
                 if(($step.Type -eq 'CombinedSignInAndSignUp') -or ($step.Type -eq 'ClaimsProviderSelection')) {
                     $selection = "<ClaimsProviderSelection TargetClaimsExchangeId=""{0}Exchange"" xmlns=""http://schemas.microsoft.com/online/cpim/schemas/2013/06"" />" -f $name
                     $node = $step.ClaimsProviderSelections.OwnerDocument.ImportNode(([xml]$selection).LastChild, $true)
@@ -1473,7 +1467,7 @@ function Add-IEFPoliciesIdP {
                     continue
                 }
                 if($addToClaimsExchange) {
-                    try { // If no ClaimsExchanges, RPs referencing only local signin, e.g. PwdChange will not have a 2nd step with Claimsexchanges, ignore these when adding IdPs
+                    try { # If no ClaimsExchanges, RPs referencing only local signin, e.g. PwdChange will not have a 2nd step with Claimsexchanges, ignore these when adding IdPs
                         $selection = "<ClaimsExchange Id=""{0}Exchange"" TechnicalProfileReferenceId=""{1}"" xmlns=""http://schemas.microsoft.com/online/cpim/schemas/2013/06"" />" -f $name, $tpId
                         $node = $step.ClaimsExchanges.OwnerDocument.ImportNode(([xml]$selection).LastChild, $true)
                         $node = $step.ClaimsExchanges.AppendChild($node)    
@@ -1532,9 +1526,6 @@ function New-IEFPoliciesSamlRP {
     .PARAMETER extensionsFile
     Xml policy file where the new technical profile will be created (defaults: TrustExtensionsFramework.xml)
 
-    .PARAMETER configurationFilePath
-    Name of the configuration json file where IdP variable data will be defined (default: conf.json)
-    
     #>
     [CmdletBinding()]
     param(
@@ -1547,10 +1538,7 @@ function New-IEFPoliciesSamlRP {
         [string]$sourceDirectoryPath = '.\',
                 
         [ValidateNotNullOrEmpty()]
-        [string]$extensionsFile = 'TrustFrameworkExtensions.xml',
-
-        [ValidateNotNullOrEmpty()]
-        [string]$configurationFilePath = '.\conf.json'
+        [string]$extensionsFile = 'TrustFrameworkExtensions.xml'
     )
     if([string]::IsNullOrEmpty($epName)) {
         Write-Error "epName parameter may not be empty"
@@ -1559,8 +1547,19 @@ function New-IEFPoliciesSamlRP {
     if([string]::IsNullOrEmpty($signingKeyName)) {
         $signingKeyName = ("B2C_1A_{0}SigningKey" -f $epName)
     }
+
+    if(-not $configurationFilePath) {
+        if($script:b2cName) {
+            $configurationFilePath = ".\$($script:b2cName).json"   
+        } else {
+            $configurationFilePath = '.\conf.json'
+        }  
+    }
     if(-not(Test-Path $configurationFilePath)){
-        $configurationFilePath = ".\conf.json"
+        $conf = @{
+            Prefix = "V1_" 
+            SomeProperty = "Use {SomeProperty} in your xml to have it replaced by this value"
+        }
         Write-Host ("{0} configuration file created" -f $configurationFilePath)
     } else {
         $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
