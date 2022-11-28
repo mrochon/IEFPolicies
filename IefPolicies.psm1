@@ -1624,6 +1624,7 @@ function Debug-IEFPolicies {
     1. Unknown claim names in preconditions
     2. Use of a claim name in ClaimEquals precondition where a literal is expected
     3. Duplicate key values in Metadata elements
+    4. Missing IncludeClaimResolvingInClaimsHandling in TechnicalProfiles using ClaimsResolvers.    
     
     .PARAMETER sourceDirectory
     Directory with xml policies (default is current directory)
@@ -1652,12 +1653,13 @@ function Debug-IEFPolicies {
         }
     }
 
-    $errorCount = 0
+    $script:errorCount = 0
     Write-Output "----------------"    
     Write-Output "Tests:"
     Write-Output "1. Duplicate metadata keys."
     Write-Output "2. Use of claim names in fields where literals are expected."
     Write-Output "3. Invalid claim names in preconditions."
+    Write-Output "4. Missing IncludeClaimResolvingInClaimsHandling in TechnicalProfiles using ClaimsResolvers."
     Write-Output "----------------"
 
     foreach($policy in $script:policies.List) {
@@ -1668,7 +1670,7 @@ function Debug-IEFPolicies {
                 if("Element" -ne $k.NodeType) { continue }
                 if($keys.Contains($k.Key)) {
                     Write-Host ("{1}: Metadata for '{0}' contains duplicate key '{2}'" -f $_.node.ParentNode.Attributes["Id"].Value, $policy.Source, $k.Key)
-                    ++$errorCount
+                    ++$script:errorCount
                 }
                 $keys.Add($k.Key)
             }
@@ -1686,13 +1688,13 @@ function Debug-IEFPolicies {
                     if ($clauseNo -eq 0) {
                         if(-not $claims.Contains($val)) {
                             Write-Host ("{0}: A precondition contains an unknown claim '{1}'" -f $policy.Source, $val)
-                            ++$errorCount
+                            ++$script:errorCount
                         }
                         if ($type -eq "ClaimsExist") { break } # check only the first Value element
                     } else {
                         if($claims.Contains($val)) {
                             Write-Host ("{0}: A ClaimEquals precondition is testing against a name of an existing claim type {1}. Test value must be a literal." -f $policy.Source, $val)
-                            ++$errorCount
+                            ++$script:errorCount
                         }
                         break
                     }
@@ -1701,7 +1703,9 @@ function Debug-IEFPolicies {
             }
         }
     }
-    Write-Host ("Found {0} possible issues" -f $errorCount)
+    CheckInheritedAttrs (New-Object Collections.Generic.List[String]) $script:policies.Root    
+
+    Write-Host ("Found {0} possible issues" -f $script:errorCount)
 }
 
 function LoadPolicies([string]$sourceDirectory = "./") {
@@ -1755,5 +1759,41 @@ function ShowPolicyTree([PSObject] $parent, [uint16] $indent = 0) {
         }
     }
 }
+
+$ClaimsResolvers = @("Culture", "Policy", "Context", "Claim", "OIDC", "OAUTH-KV", "SAML", "oauth2" )
+function CheckInheritedAttrs([Collections.Generic.List[String]] $tps, [PSObject] $parent) {
+    Write-Debug ("CheckInheritedAttrs, parent: {0}" -f $parent.Id)
+    $xml = [xml] $parent.Body
+    foreach($t in $xml.TrustFrameworkPolicy.ClaimsProviders.ClaimsProvider.TechnicalProfiles.ChildNodes) {
+        if("Element" -ne $t.NodeType) { continue }        
+        $tp_id = $t.Attributes["Id"].Value    
+        Write-Debug ("   TechnicalProfile: {0}" -f $tp_id)    
+        if($t.Metadata) {
+            foreach($m in $t.Metadata.ChildNodes) {
+                if("Element" -ne $m.NodeType) { continue }
+                if("IncludeClaimResolvingInClaimsHandling" -eq $m.Attributes["Key"].Value) {
+                    Write-Debug "      Found IncludeClaimResolvingInClaimsHandling"                        
+                    if("true" -eq $m.InnerXml) {
+                        Write-Debug "        is True"
+                        $tps.Add($t.Attributes["Id"].Value)
+                    }
+                }
+            }
+        }
+        $tp_string = $t.InnerXml
+        foreach($cr in $ClaimsResolvers) {
+            if(-not $tp_string.Contains("{$($cr):")) { continue }
+            if($tps -and $tps.Contains($tp_id)) { continue }
+            Write-Host "TechnicalProfile $($tp_id) uses ClaimsResolver $($cr) but its metadata does not include the IncludeClaimResolvingInClaimsHandling=true setting"
+            ++$script:errorCount
+        }
+    }    
+    foreach($p in $script:policies.List) {
+        if($p.BaseId -eq $parent.Id) {
+            CheckInheritedAttrs $tps $p                  
+        }      
+    }
+}
+
 
 $script:policies = $null
