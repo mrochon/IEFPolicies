@@ -34,6 +34,7 @@ FunctionsToExport = @(
     'Add-IEFPoliciesSample'  
     'Add-IEFPoliciesIdP'
     'Connect-IEFPolicies' 
+    'ConvertTo-IEFPolicies'     
     'Debug-IefPolicies'
     'Export-IEFPolicies'
     'Get-IefPoliciesAADCommon'    

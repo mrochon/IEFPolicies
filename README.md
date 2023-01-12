@@ -138,6 +138,7 @@ Import-IefPolicies
 1. [Add-IEFPoliciesSample](https://github.com/mrochon/IEFPolicies#add-iefpoliciessample)
 1. [Add-IEFPoliciesIdP](https://github.com/mrochon/IEFPolicies#add-iefpoliciesidp)
 2. [Connect-IEFPolicies](https://github.com/mrochon/IEFPolicies#connect-iefpolicies)
+2. [ConvertTo-IEFPolicies](https://github.com/mrochon/IEFPolicies#convertto-iefpolicies)
 2. [Debug-IEFPolicies](https://github.com/mrochon/IEFPolicies#debug-iefpolicies)
 3. [Export-IEFPolicies](https://github.com/mrochon/IEFPolicies#export-iefpolicies)
 4. [Get-IEFPoliciesAADCommon](https://github.com/mrochon/IEFPolicies#get-iefpoliciesaadcommon)
@@ -226,6 +227,21 @@ Connect-IefPolicies -tenant myTenant -clientId "registered app id" -clientSecret
 | tenant | N | Name of tenant you want to sign into. '.onmicrosoft.com' is not required. This parameter is required if you are signing in with an account which is an invited guest in your B2C tenant |
 | clientId | N | id of an application registered in your tenant for non-interactive signin |
 | clientSecret | N | Secret generated for the app |
+
+### ConvertTo-IEFPolicies
+
+Creates configuration json file(s) for use in [Import-IEFPolicies](https://github.com/mrochon/IEFPolicies#import-iefpolicies) from the json settings file used by [VSCode B2C Extension](https://marketplace.visualstudio.com/items?itemName=AzureADB2CTools.aadb2c). 
+[Import-IEFPolicies](https://github.com/mrochon/IEFPolicies#import-iefpolicies) uses one json setting file per B2C tenant to which IEF policies are loaded. Each such file is named with the B2C tenant's name, e.g. *myb2c.json* would be used when importing
+policies into *myb2c.onmicrosoft.com* tenant. Also, since [Import-IEFPolicies](https://github.com/mrochon/IEFPolicies#import-iefpolicies) can subsitute certain fixes names, e.g. *yourtenant* with values based on the target tenant to which the policies are being imported, this command drops these values (tenant name, IEF application ids) from the configuration files and provides instructions on how to adapt the xml accordingly.
+
+```PowerShell
+Convert-IefPolicies -extensionsFilePath ./appSettings.json -IefPoliciesDirectory ./newxml 
+```
+
+| Property name | Required | Purpose |
+| -------- | ------ | ----- |
+| extensionsFilePath | N | Path to the B2C Extensions settings file, default: './appSettings.json' |
+| clienIefPoliciesDirectorytId | N | directory where new configuration files will be created, default: './' |
 
 ### Debug-IEFPolicies
 
