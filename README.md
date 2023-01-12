@@ -232,7 +232,9 @@ Connect-IefPolicies -tenant myTenant -clientId "registered app id" -clientSecret
 
 Creates configuration json file(s) for use in [Import-IEFPolicies](https://github.com/mrochon/IEFPolicies#import-iefpolicies) from the json settings file used by [VSCode B2C Extension](https://marketplace.visualstudio.com/items?itemName=AzureADB2CTools.aadb2c). 
 [Import-IEFPolicies](https://github.com/mrochon/IEFPolicies#import-iefpolicies) uses one json setting file per B2C tenant to which IEF policies are loaded. Each such file is named with the B2C tenant's name, e.g. *myb2c.json* would be used when importing
-policies into *myb2c.onmicrosoft.com* tenant. Also, since [Import-IEFPolicies](https://github.com/mrochon/IEFPolicies#import-iefpolicies) can subsitute certain fixes names, e.g. *yourtenant* with values based on the target tenant to which the policies are being imported, this command drops these values (tenant name, IEF application ids) from the configuration files and provides instructions on how to adapt the xml accordingly. **Note:** [Import-IEFPolicies](https://github.com/mrochon/IEFPolicies#import-iefpolicies) will also replace any instances of *'{ExtAppId}"* and *'{ExtObjectId}'* with the appId and object id of the B2C extensions App found in the tenant intoo which the policies are being imported.
+policies into *myb2c.onmicrosoft.com* tenant. Also, since [Import-IEFPolicies](https://github.com/mrochon/IEFPolicies#import-iefpolicies) automatically replaces certain fixed strings, e.g. *yourtenant* with values based on the tenant to which the policies are being imported, this command drops these values (tenant name, IEF application ids) from the configuration files and provides instructions on how to adapt the xml accordingly. 
+
+**Note:** [Import-IEFPolicies](https://github.com/mrochon/IEFPolicies#import-iefpolicies) will also replace any instances of *'{ExtAppId}"* and *'{ExtObjectId}'* with the appId and object id of the B2C extensions App found in the tenant into which the policies are being imported.
 
 ```PowerShell
 Convert-IefPolicies -extensionsFilePath ./appSettings.json -IefPoliciesDirectory ./newxml 
