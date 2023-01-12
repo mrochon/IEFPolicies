@@ -1716,6 +1716,63 @@ function Debug-IEFPolicies {
     Write-Host ("Found {0} possible issues" -f $script:errorCount)
 }
 
+function ConvertTo-IefPolicies {
+    <#
+    .SYNOPSIS
+    Converts VSCode B2C Extensions policy settings json into settings used by Import-IefPolicies
+    
+    .DESCRIPTION
+    Converts VSCode B2C Extensions policy settings json file into one or more setting files in the format 
+     used by Import-IefPolicies.    
+   
+    .PARAMETER extensionsFilePath
+    Path of configuration file used by B2C VSCode Extensions (default: ./appSettings.json)
+    
+    .PARAMETER IefPoliciesDirectory
+    Directory where configuration files(s) in the format used by IefPolicies Import-IefPolicies command will be stored (default: ./).
+    Each file will be named <b2cTanantName>.json, e.g. mytenant.json
+
+    #>
+    [CmdletBinding()]
+    param(
+        [ValidateNotNullOrEmpty()]
+        [string]$extensionsFilePath = '.\appSettings.json',
+
+        [ValidateNotNullOrEmpty()]
+        [string]$IefPoliciesDirectory = '.\'
+    )
+
+    # $DebugPreference = "Continue"
+    $appSettings = Get-Content -Path $extensionsFilePath | Out-String | ConvertFrom-Json
+    foreach($env in $appSettings.Environments) {
+        Write-Debug "Environment: $($env.Name)"
+        $b2cName = $env.Tenant.Split('.')[0]
+        Write-Debug "   Tenant: $($b2cName)"
+        $conf = @{ Prefix = "V1_" }
+
+        foreach($prop in ($env.PolicySettings | Get-Member -MemberType NoteProperty)) {
+            Write-Debug "   - $($prop.Name) : $($env.PolicySettings.$($prop.Name))"
+            if(($prop.Name -ne "ProxyIdentityExperienceFrameworkAppId") -and ($prop.Name -ne "IdentityExperienceFrameworkAppId")) {
+                $conf.Add($prop.Name, $env.PolicySettings.$($prop.Name))
+            } else {
+                Write-Host "$($prop.Name) ignored. Import-IefPolicies will use values based on B2C tenant used."
+            }
+        }
+        $confPath = ("{0}/{1}.json" -f $IefPoliciesDirectory, $b2cName)
+        $conf | ConvertTo-Json -Depth 4 | Out-File -FilePath $confPath
+        Write-Host "$($confPath) created"
+    }
+    Write-Host ""
+    Write-Host "Please make the following global string replacements in your current policy xml files."
+    Write-Host "(Values of these properties are no longer needed in your configuration json files. They will be obtained"
+    Write-Host " during the execution of Import-IefPolicies command, based on the B2C tenant you are logged into at that time.)"
+    Write-Host ""
+    Write-Host "1. '{Settings:' with '{'"
+    Write-Host "2. '<b2cname>.onmicrosoft.com' with 'yourtenant.onmicrosoft.com', where <b2cname> is the name of a B2C tenant"
+    Write-Host "3. '{Settings:IdentityExperienceFrameworkAppId}' with 'IdentityExperienceFrameworkAppId'"
+    Write-Host "4. '{Settings:ProxyIdentityExperienceFrameworkAppId}' with 'ProxyIdentityExperienceFrameworkAppId'"    
+}
+
 function LoadPolicies([string]$sourceDirectory = "./") {
     $files = Get-Childitem -Path $sourceDirectory -Filter '*.xml'
     $policyList = @()
