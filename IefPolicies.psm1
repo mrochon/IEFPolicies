@@ -904,6 +904,93 @@ function Get-IefPoliciesAADCommon() {
 </ClaimsProvider>'
 }
 
+function New-IefPoliciesPrincipal {
+    <#
+        .SYNOPSIS
+        Register a Graph client with permissions required by IefPolicies
+    
+        .DESCRIPTION
+        Registers an application in the b2C tenant for use in un-attended (CI/CD) use of Import-IefPolicies and
+        other IEFPolicies functions.
+
+        .PARAMETER name
+        Application name
+
+        .EXAMPLE
+            PS C:\> New-IEFPoliciesPrincipal myClient
+       
+        .NOTES
+        You must use connect-iefpolicies -tenant <tanant Name> before executing this command
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]            
+        [ValidateNotNullOrEmpty()]
+        [string]$name
+    )
+    Refresh_token
+    $headers = @{
+        'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
+        'Content-Type' = "application/json";        
+    }
+    Write-Debug ("New-IefPoliciesPrincipal {0}" -f $name)
+    $app = Get-Application $ame
+    if ($null -ne $app) { 
+        Write-Error ("App {0} exists already." -f $name)
+        return $app 
+    }
+
+    # openid perms
+    $permissions = @{
+        resourceAppId  = "00000003-0000-0000-c000-000000000000";
+        resourceAccess = @(
+            @{
+                id = "498476ce-e0fe-48b0-b801-37ba7e2685c6";
+                type = "Role"
+            },
+            @{
+                id = "4a771c9a-1cf2-4609-b88e-3d3e02d539cd";
+                type = "Role"
+            },
+            @{
+                id = "79a677f7-b79d-40d0-a36a-3e6f8688dd7a";
+                type = "Role"
+            },
+            @{
+                id = "9a5d68dd-52b0-4cc2-bd40-abcf44ac3a30";
+                type = "Role"
+            },
+            @{
+                id = "dbb9058a-0e50-45d7-ae91-66909b5d4664";
+                type = "Role"
+            }
+        )
+    } 
+    $body = @{
+        displayName = $name;
+        signInAudience = "AzureADSingleOrg";
+        requiredResourceAccess = @( $permissions );
+    }  
+    try {
+        $app = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/applications" -Method POST -Headers $headers -Body ($body | ConvertTo-Json -Depth 6)
+    } catch {
+        Write-Error $_.ErrorDetails.Message
+        throw
+    }
+    # Create secret
+    $parms = @{ passwordCredential = @{ displayName = "Created by New-IefPoliciesPrincipal" } }
+    $secret = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/applications/{0}/aadPassword" -f $app.id) -Method POST -Headers $headers -Body ($parms | ConvertTo-Json -Depth 6) 
+
+    $sp = @{ appId = $app.appId; displayName = $Appname }
+    Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/v1.0/servicePrincipals" -f $app.id) -Method POST -Headers $headers -Body ($sp | ConvertTo-Json -Depth 6) | Out-Null
+
+    Write-Host "Created $($name) application."
+    Write-Host "Id    : $($app.id)."   
+    Write-Host "Secret: $($secret.secretText)."   
+    Write-Host "Please make sure to grant admin permissions to this application."    
+    return $app
+}
+
 function New-Application {
     Param(
         [Parameter(Mandatory)]

@@ -43,6 +43,7 @@ FunctionsToExport = @(
     'New-IEFPolicies'
     'New-IefPoliciesCert'
     'New-IefPoliciesKey'  
+    'New-IefPoliciesPrincipal'      
     'New-IEFPoliciesSamlRP'  
     'Remove-IEFPolicies'    
 )
