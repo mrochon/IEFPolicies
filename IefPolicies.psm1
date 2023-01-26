@@ -83,7 +83,12 @@
                         }
                     }
                 }
-                $msg = "{0}: uploading" -f $p.Id
+                if($noPrefix) {
+                    $policyId = $p.Id
+                } else {
+                    $policyId = $p.Id.Replace('_1A_', '_1A_{0}' -f $prefix)
+                }
+                $msg = "Uploading $($p.Id) as $($policyId)"
                 Write-Host $msg  -ForegroundColor Green 
                 # Replace tenant id but only if already there. It messes up xml formatting
                 $xml = [xml] $p.Body
@@ -115,11 +120,6 @@
                     $policy = $policy.Replace($repl, $memb.Value)
                 }
 
-                if($noPrefix) {
-                    $policyId = $p.Id
-                } else {
-                    $policyId = $p.Id.Replace('_1A_', '_1A_{0}' -f $prefix)
-                }
                 if (-not $generateOnly) {
                     $resp = Invoke-WebRequest -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/policies/{0}/`$value" -f $policyId) -Method Put -Headers $headersXml -ContentType 'application/xml; charset=utf-8' -Body $policy -SkipHttpErrorCheck
                     if ($resp.StatusCode -eq 201) {

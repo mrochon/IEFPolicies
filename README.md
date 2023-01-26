@@ -20,6 +20,8 @@ This module can be installed from the [PowerShell Gallery](https://www.powershel
 | Name  | Description  |
 |---|---|
 | 3.1.16 | Added [ConvertTo-IEFPolicies](https://github.com/mrochon/IEFPolicies#convertto-iefpolicies) cmdlet |
+|   |    | Displaying full policy name on upload (with prefix) |
+|   |    | Preview of unattended service principal New-IefPoliciesPrincipal |
 | 3.1.15 | Debug-IefPolicies checks for IncludeClaimResolvingInClaimsHandling |
 |  | New-iefPolicies creates B2C tenant-specific conf file if user is signed in |
 |  | Minor bug fixes |
