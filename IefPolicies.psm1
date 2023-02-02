@@ -184,7 +184,11 @@
         try {
             $lastConfChange = (Get-Item $configurationFilePath).LastWriteTime.Ticks
             $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
-            if (-not $prefix){ $prefix = $conf.Prefix }
+            if (-not $prefix -and $conf.Prefix) { 
+                $prefix = $conf.Prefix 
+            } else {
+                $prefix = ""
+            }
             Format-Config $null $conf
             $confDir = Split-Path -Path $configurationFilePath
             $secretsPath = "{0}/secrets.json" -f $confDir
@@ -1334,21 +1338,20 @@ function Add-IEFPoliciesIdP {
     if([string]::IsNullOrEmpty($script:b2cName)){
         $configurationFilePath = ("{0}{1}" -f $sourceDirectoryPath, "conf.json")
     } else {
-        $configurationFilePath = ("{0}{1}.json" -f $sourceDirectoryPath, $script:b2cName)            
-    }
-
-    if(-not(Test-Path $configurationFilePath)){
-        $configurationFilePath = ".\conf.json"
-        # Write-Host ("{0} configuration file created" -f $configurationFilePath)
-    } else {
-        try {
-            $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
-            Write-Host ("Using {0} configuration file" -f $configurationFilePath)
-        } catch {
-            Write-error ("Unable to read configuration json file" -f $configurationFilePath)
-            throw
+        $configurationFilePath = ("{0}{1}.json" -f $sourceDirectoryPath, $script:b2cName)    
+        if(-not(Test-Path $configurationFilePath)){
+            $configurationFilePath = ("{0}{1}" -f $sourceDirectoryPath, "conf.json")
         }
     }
+
+    try {
+        $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
+        Write-Host ("Using {0} configuration file" -f $configurationFilePath)
+    } catch {
+        Write-error ("Unable to read configuration json file" -f $configurationFilePath)
+        throw
+    }
+
     if($null -eq $conf) {
         write-Host ("Creating new {0} file." -f $configurationFilePath)
         $conf = @{ Prefix = "V1_" }
