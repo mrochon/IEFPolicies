@@ -177,7 +177,7 @@ Parameters:
 
 ### Add-IEFPoliciesIdP
 
-Adds a standard SAMl or OIDC IdP to an existing policy set and updates journeys to usereference it. The new policy xml files are created in a separate folder. You can then relace the existing policy files with the new ones.
+Adds a standard SAML, OIDC IdP or one of the social IdPs (Amazon, eBay, etc.) to an existing policy set and updates journeys to usereference it. The new policy xml files are created in a separate folder. You can then relace the existing policy files with the new ones.
 
 As part of the process, this command adds a new object to the configuration file with data that needs to be provided before the policies are imported
 
