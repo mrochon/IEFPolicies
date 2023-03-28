@@ -1803,7 +1803,15 @@ function Debug-IEFPolicies {
     }
     CheckInheritedAttrs (New-Object Collections.Generic.List[String]) $script:policies.Root    
 
-    Write-Host ("Found {0} possible issues" -f $script:errorCount)
+    If ($script:errorCount -gt 0)
+    {
+        $InvalidOperationException = New-Object System.InvalidOperationException
+        Write-Error -Exception $InvalidOperationException -Message ("{0} possible issues found with policies." -f $script:errorCount) -ErrorAction Stop
+    }
+    Else
+    {
+        Write-Host ("Found {0} possible issues" -f $script:errorCount)
+    }
 }
 
 function ConvertTo-IefPolicies {
