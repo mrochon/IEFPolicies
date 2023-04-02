@@ -1785,13 +1785,13 @@ function Debug-IEFPolicies {
                     $val = $c.InnerXml
                     if ($clauseNo -eq 0) {
                         if(-not $claims.Contains($val)) {
-                            Write-Host ("{0}: A precondition contains an unknown claim '{1}'" -f $policy.Source, $val)
+                            Write-Error ("{0}: A precondition contains an unknown claim '{1}'" -f $policy.Source, $val)
                             ++$script:errorCount
                         }
                         if ($type -eq "ClaimsExist") { break } # check only the first Value element
                     } else {
                         if($claims.Contains($val)) {
-                            Write-Host ("{0}: A ClaimEquals precondition is testing against a name of an existing claim type {1}. Test value must be a literal." -f $policy.Source, $val)
+                            Write-Error ("{0}: A ClaimEquals precondition is testing against a name of an existing claim type {1}. Test value must be a literal." -f $policy.Source, $val)
                             ++$script:errorCount
                         }
                         break
@@ -1803,7 +1803,12 @@ function Debug-IEFPolicies {
     }
     CheckInheritedAttrs (New-Object Collections.Generic.List[String]) $script:policies.Root    
 
-    Write-Host ("Found {0} possible issues" -f $script:errorCount)
+    if($script:errorCount -eq 0) {
+        Write-Output ("No issues detected")
+    } else {
+        Write-Error ("Found {0} possible issue(s)" -f $script:errorCount)  
+    }
+    return $script:errorCount      
 }
 
 function ConvertTo-IefPolicies {
@@ -1939,7 +1944,7 @@ function CheckInheritedAttrs([Collections.Generic.List[String]] $tps, [PSObject]
         foreach($cr in $ClaimsResolvers) {
             if(-not $tp_string.Contains("{$($cr):")) { continue }
             if($tps -and $tps.Contains($tp_id)) { continue }
-            Write-Host "TechnicalProfile $($tp_id) uses ClaimsResolver $($cr) but its metadata does not include the IncludeClaimResolvingInClaimsHandling=true setting"
+            Write-Error "TechnicalProfile $($tp_id) uses ClaimsResolver $($cr) but its metadata does not include the IncludeClaimResolvingInClaimsHandling=true setting"
             ++$script:errorCount
         }
     }    
