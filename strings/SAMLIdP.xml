@@ -12,7 +12,7 @@
         <Item Key="ResponsesSigned">false</Item>                     
       </Metadata>
       <CryptographicKeys>
-        <Key Id="SamlMessageSigning" StorageReferenceId="B2C_1A_{0}SAMLSigningCert"/>
+        <Key Id="SamlMessageSigning" StorageReferenceId="B2C_1A_{0}SigningCert"/>
       </CryptographicKeys>
       <OutputClaims>
         <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="assertionSubjectName" />

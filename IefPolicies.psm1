@@ -1471,14 +1471,14 @@ function Add-IEFPoliciesIdP {
         "OIDC" {
             $str = Get-Content "$PSScriptRoot\strings\OIDCtp.xml"
             $tpId = ("{0}-OIDC" -f $name)            
-            $tpConf.Add("clientId", "apps.googleusercontent.com")
+            $tpConf.Add("clientId", "<clientId>")
             $tpConf.Add("metadataUrl", "https://op.com/.well-known/openid-configuration")            
-            $keyMsg = ("Ensure that the OAuth2 client secret is defined in a Policy Container named: B2C_1A_{0}OIDCSecret (key usage: sig)" -f $name)
+            $keyMsg = ("Ensure that the OAuth2 client secret is defined in a Policy Container named: B2C_1A_{0}Secret (key usage: sig)" -f $name)
         }
         "SAML" {
             $str = Get-Content "$PSScriptRoot\strings\SAMLIdP.xml"
             $tpId = ("{0}-SAML" -f $name)
-            $keyMsg = ("Ensure that the SAML request signing key is defined in a Policy Container named: B2C_1A_{0}SAMLSigningCert" -f $name)
+            $keyMsg = ("Ensure that the SAML request signing key is defined in a Policy Container named: B2C_1A_{0}SigningCert" -f $name)
             $tpConf.Add("metadataUrl", "https://samlidp.com/.well-known/federationmetadata.xml")    
             Write-Host "-------------------------"
             Write-Host "B2C SAML metadata url:"
@@ -1506,6 +1506,7 @@ function Add-IEFPoliciesIdP {
             } else {
                 $tpId = $t.Split("`"")[1]
             }
+            $tpConf.Add("clientId", "<clientId>")
             $keyMsg = "Ensure that the client secret is added in a Policy Container named: B2C_1A_$($name)Secret"
         }  
     }
