@@ -515,12 +515,14 @@ param(
                 $xml.Save($dest)
                 Write-Warning "Added AAD-Common extensions app settings to TrustFrameworkExtensions.xml"
             } else {
-                Invoke-WebRequest -UseBasicParsing  -Uri $file -OutFile $fileDestination -ErrorAction Stop -Verbose
+                Invoke-WebRequest -UseBasicParsing  -Uri $file -OutFile $fileDestination -ErrorAction Stop
             }
-            if("TrustFrameworkBase.xml" -eq $fileName) {
+            Write-Output "Downloaded '$($file)' to '$fileDestination'"
+            # Issue 55            
+            if("TrustFrameworkBase.xml","TrustFrameworkLocalization.xml" -Contains $fileName) {
                 (Get-ChildItem $fileDestination).Set_IsReadOnly($True)
+                Write-Warning "Marked as read-only to prevent accidental changes"
             }
-            Write-Host "Downloaded '$($file)' to '$fileDestination'"
             ++$count
         } catch {
             throw ("Unable to download {0}: {1}" -f $file.path, $_)
