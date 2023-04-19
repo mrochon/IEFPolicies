@@ -1770,7 +1770,7 @@ function Debug-IEFPolicies {
             foreach($k in $_.node.ChildNodes) {
                 if("Element" -ne $k.NodeType) { continue }
                 if($keys.Contains($k.Key)) {
-                    Write-Host ("{1}: Metadata for '{0}' contains duplicate key '{2}'" -f $_.node.ParentNode.Attributes["Id"].Value, $policy.Source, $k.Key)
+                    Write-Error ("{1}: Metadata for '{0}' contains duplicate key '{2}'" -f $_.node.ParentNode.Attributes["Id"].Value, $policy.Source, $k.Key)
                     ++$script:errorCount
                 }
                 $keys.Add($k.Key)
