@@ -181,7 +181,7 @@ Adds a standard SAML, OIDC IdP or one of the social IdPs (Amazon, eBay, etc.) to
 
 As part of the process, this command adds a new object to the configuration file with data that needs to be provided before the policies are imported
 
-*Add-IefPolicies -protocol aad* adds AAD multi-tenant support to the policy set. If not already in existence, this command will register a new application called *AADCommon* and store it's secret in *B2C_1A_AADAppSecret* policy container.
+*Add-IefPolicies -protocol AAD* and *Add-IefPolicies -protocol MSA* adds AAD multi-tenant and Microsoft Account (MSA) support to the policy set with no further need to complete the configuration in an AAD tenant. If not already in existence, this command will register the appropriate applications and secrets in the current B2C tenant.
 
 The following command will add a new OIDC TechnicalProfile named *Contoso-OIDC* to the TrustFrameworkExtension.xml and add references to it to all journeys referenced by relying parties defined in this policy set. It will also extend the conf.json file with some additional settings (e.g. metadata url) to be used when importing these files to B2C. 
 
