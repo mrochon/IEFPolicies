@@ -1770,7 +1770,7 @@ function Debug-IEFPolicies {
             foreach($k in $_.node.ChildNodes) {
                 if("Element" -ne $k.NodeType) { continue }
                 if($keys.Contains($k.Key)) {
-                    Write-Error ("{1}: Metadata for '{0}' contains duplicate key '{2}'" -f $_.node.ParentNode.Attributes["Id"].Value, $policy.Source, $k.Key)
+                    Write-Output ("{1}: Metadata for '{0}' contains duplicate key '{2}'" -f $_.node.ParentNode.Attributes["Id"].Value, $policy.Source, $k.Key)
                     ++$script:errorCount
                 }
                 $keys.Add($k.Key)
@@ -1788,13 +1788,13 @@ function Debug-IEFPolicies {
                     $val = $c.InnerXml
                     if ($clauseNo -eq 0) {
                         if(-not $claims.Contains($val)) {
-                            Write-Error ("{0}: A precondition contains an unknown claim '{1}'" -f $policy.Source, $val)
+                            Write-Output ("{0}: A precondition contains an unknown claim '{1}'" -f $policy.Source, $val)
                             ++$script:errorCount
                         }
                         if ($type -eq "ClaimsExist") { break } # check only the first Value element
                     } else {
                         if($claims.Contains($val)) {
-                            Write-Error ("{0}: A ClaimEquals precondition is testing against a name of an existing claim type {1}. Test value must be a literal." -f $policy.Source, $val)
+                            Write-Output ("{0}: A ClaimEquals precondition is testing against a name of an existing claim type {1}. Test value must be a literal." -f $policy.Source, $val)
                             ++$script:errorCount
                         }
                         break
