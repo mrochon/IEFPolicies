@@ -1002,7 +1002,10 @@ function New-Application {
         [Parameter(Mandatory)]
         [string] $AppName,
         
-        $API
+        $API,
+
+        $signInAudience = "AzureADMyOrg"
+
     )
     Refresh_token
     $headers = @{
@@ -1032,33 +1035,21 @@ function New-Application {
 
     # if this is an API (not using other API, cannot in B2C anyway)
     if ($null -eq $API) {
-        if ($AppName.EndsWith("-MT")) {
-            $body = @{
-                displayName = $AppName;
-                signInAudience = "AzureADMultipleOrgs";
-                requiredResourceAccess = @( $OIDCAccess );
-                web = @{
-                    redirectUris = @(("https://{0}.b2clogin.com/{0}.onmicrosoft.com/oauth2/authresp" -f $script:b2cName))
-                }
-            }  
-            try {
-                $app = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/applications" -Method POST -Headers $headers -Body ($body | ConvertTo-Json -Depth 6)
-            } catch {
-                Write-Error $_.ErrorDetails.Message
-                throw
+        $body = @{
+            displayName = $AppName;
+            signInAudience = $signInAudience;
+            requiredResourceAccess = @( $OIDCAccess );
+            web = @{
+                redirectUris = @(("https://{0}.b2clogin.com/{0}.onmicrosoft.com/oauth2/authresp" -f $script:b2cName))
             }
-        } else { # IEFApp
-            $body = @{
-                displayName = $AppName;
-                signInAudience = "AzureADMyOrg";
-                requiredResourceAccess = @( $OIDCAccess );
-            }  
-            try {
-                $app = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/applications" -Method POST -Headers $headers -Body ($body | ConvertTo-Json -Depth 6)
-            } catch {
-                Write-Error $_.ErrorDetails.Message
-                throw
-            }
+        }  
+        try {
+            $app = Invoke-RestMethod -UseBasicParsing  -Uri "https://graph.microsoft.com/v1.0/applications" -Method POST -Headers $headers -Body ($body | ConvertTo-Json -Depth 6)
+        } catch {
+            Write-Error $_.ErrorDetails.Message
+            throw
+        }
+        if("IdentityExperienceFramework" -eq $AppName) {
             $apiProps = @{
                 identifierUris = @(("https://{0}/{1}" -f $script:b2cDomain, $app.appId));
                 web = @{
@@ -1087,6 +1078,10 @@ function New-Application {
             }
         }
     } else { 
+        # Must be ProxyIdentityExperienceFramework
+        if("ProxyIdentityExperienceFramework" -ne $AppName) {
+            throw "Only IdentityExperienceFrameworkProxy can use the API parameter."
+        }
         $body = @{
             displayName = $AppName;
             signInAudience = "AzureADMyOrg";
@@ -1430,18 +1425,24 @@ function Add-IEFPoliciesIdP {
     $tpConf = @{ domainName = ("{0}.com" -f $name); displayName = ("{0} employees/users" -f $name) }
     $name = $name.ToUpper()
     switch($protocol) {
-        "AAD" { # AAD, multi-tenant
+        #"AAD" { # AAD, multi-tenant
+        { (PSItem -eq "AAD") -or (PSItem -eq "MSA") } { # AAD or MSA
             #  $DebugPreference = "Continue"
-            Write-Host "Adding AAD multi-tenant support"
+            Write-Host "Adding AAD multi-tenant support/MSA"
             Refresh_token
             $headers = @{
                 'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
                 'Content-Type' = "application/json";        
             }
-            #Write-Debug $script:tokens.access_token
-            # Must have -MT suffix to tell New-Application this is a MT app
-            $aadCommon = New-Application -AppName ("{0}-MT" -f $name)
-            Write-Host ("Created/found multi-tenant application: {0}-MT, appId:{1}" -f $name, $aadCommon.appId)    
+            if("AAD" -eq $protocol) {
+                Write-Debug ("Checking for application {0}-MT" -f $name)
+                $aadCommon = New-Application -AppName ("{0}-MT" -f $name) -signInAudience "AzureADMultipleOrgs"
+                Write-Host ("Created/found multi-tenant application: {0}-MT, appId:{1}" -f $name, $aadCommon.appId)   
+            } else {
+                Write-Debug ("Checking for application {0}" -f $name)
+                $aadCommon = New-Application -AppName ("{0}" -f $name) -signInAudience "AzureADandPersonalMicrosoftAccount"
+                Write-Host ("Created/found MSA application: {0}, appId:{1}" -f $name, $aadCommon.appId)
+            }
             Write-Debug ("Checking for key {0}AppSecret" -f $name)   
             # assigning to $resp to prevent error output      
             $resp = Invoke-RestMethod -UseBasicParsing  -Uri ("https://graph.microsoft.com/beta/trustFramework/keySets/B2C_1A_{0}AppSecret" -f $name) -Method GET -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable httpStatus
@@ -1465,10 +1466,13 @@ function Add-IEFPoliciesIdP {
                     }
                 }
             } 
-            $str = Get-Content "$PSScriptRoot\strings\aadmulti.xml"
+            if("AAD" -eq $protocol) {
+                $str = Get-Content "$PSScriptRoot\strings\aadmulti.xml"
+            } else {
+                $str = Get-Content "$PSScriptRoot\strings\MSA.xml"
+            }
             $tpId = ("{0}-OIDC" -f $name)            
             $tpConf = @{ clientId = $aadCommon.appId } # no other properties are replaced
-            #$keyMsg = ("{0}AppSecret policy key created/updated" -f $name)
         }        
         "OIDC" {
             $str = Get-Content "$PSScriptRoot\strings\OIDCtp.xml"
