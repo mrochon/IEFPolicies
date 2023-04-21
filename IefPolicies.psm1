@@ -1426,9 +1426,9 @@ function Add-IEFPoliciesIdP {
     $name = $name.ToUpper()
     switch($protocol) {
         #"AAD" { # AAD, multi-tenant
-        { (PSItem -eq "AAD") -or (PSItem -eq "MSA") } { # AAD or MSA
+        { ($PSItem -eq "AAD") -or ($PSItem -eq "MSA") } { # AAD or MSA
             #  $DebugPreference = "Continue"
-            Write-Host "Adding AAD multi-tenant support/MSA"
+            Write-Host "Adding $($protocol) support."
             Refresh_token
             $headers = @{
                 'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
