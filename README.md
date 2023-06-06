@@ -428,7 +428,7 @@ Creates a new Saml Relying Party endpoint
 E.g.
 
 ```PowerShell
-New-IefPoliciessamlRp -issuerName Contoso
+New-IefPoliciessamlRp
 ```
 
 | Property name | Required | Purpose |
