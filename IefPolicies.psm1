@@ -1244,7 +1244,7 @@ function setupEnvironment() {
     foreach($d in $domains.value) {
         if($d.id.Contains(".onmicrosoft.com")) {
             $script:b2cDomain = $d.id
-            $script:b2cName = $script:b2cDomain.Split('.')[0]  
+            $script:b2cName = $script:b2cDomain.Split('.')[0].ToLower()
             break          
         }
     }
