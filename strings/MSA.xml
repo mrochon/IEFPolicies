@@ -3,7 +3,7 @@
     <Domain>live.com</Domain>
     <DisplayName>Microsoft Account</DisplayName>
     <TechnicalProfiles>
-      <TechnicalProfile Id="MSA-MicrosoftAccount-OpenIdConnect">
+      <TechnicalProfile Id="{0}-OIDC">
         <DisplayName>Microsoft Account</DisplayName>
         <Protocol Name="OpenIdConnect" />
         <Metadata>
@@ -17,7 +17,7 @@
           <Item Key="client_id">{{{0}:clientId}}</Item>
         </Metadata>
         <CryptographicKeys>
-          <Key Id="client_secret" StorageReferenceId="B2C_1A_MSASecret" />
+          <Key Id="client_secret" StorageReferenceId="B2C_1A_{0}AppSecret"/>
         </CryptographicKeys>
         <OutputClaims>
           <OutputClaim ClaimTypeReferenceId="issuerUserId" PartnerClaimType="oid" />
