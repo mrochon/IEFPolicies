@@ -1637,6 +1637,8 @@ function New-IEFPoliciesSamlRP {
         [ValidateNotNullOrEmpty()]
         [string]$extensionsFile = 'TrustFrameworkExtensions.xml'
     )
+    Refresh_token
+
     if([string]::IsNullOrEmpty($epName)) {
         Write-Error "epName parameter may not be empty"
         throw "Endpoint name (epName) parameter may not be empty"
@@ -1645,25 +1647,27 @@ function New-IEFPoliciesSamlRP {
         $signingKeyName = ("B2C_1A_{0}SigningKey" -f $epName)
     }
 
-    if(-not $configurationFilePath) {
-        if($script:b2cName) {
-            $configurationFilePath = ".\$($script:b2cName).json"   
-        } else {
-            $configurationFilePath = '.\conf.json'
-        }  
-    }
-    if(-not(Test-Path $configurationFilePath)){
-        $conf = @{
-            Prefix = "V1_" 
-            SomeProperty = "Use {SomeProperty} in your xml to have it replaced by this value"
-        }
-        Write-Host ("{0} configuration file created" -f $configurationFilePath)
+    if([string]::IsNullOrEmpty($script:b2cName)){
+        $configurationFilePath = ("{0}{1}" -f $sourceDirectoryPath, "conf.json")
     } else {
+        $configurationFilePath = ("{0}{1}.json" -f $sourceDirectoryPath, $script:b2cName)    
+        if(-not(Test-Path $configurationFilePath)){
+            $configurationFilePath = ("{0}{1}" -f $sourceDirectoryPath, "conf.json")
+        }
+    }
+    try {
         $conf = Get-Content -Path $configurationFilePath | Out-String | ConvertFrom-Json
         Write-Host ("Using {0} configuration file" -f $configurationFilePath)
+    } catch {
+        Write-error ("Unable to read configuration json file" -f $configurationFilePath)
+        throw
     }
 
-    Refresh_token
+    if($null -eq $conf) {
+        write-Host ("Creating new {0} file." -f $configurationFilePath)
+        $conf = @{ Prefix = "V1_" }
+    }
+
     $headers = @{
         'Authorization' = ("Bearer {0}" -f $script:tokens.access_token);
         'Content-Type' = "application/json";        
@@ -1715,7 +1719,7 @@ function New-IEFPoliciesSamlRP {
     # Update conf file
     $tpConf = @{ samlResponseIssuerUri = ("https://{0}/{1}" -f $script:b2cDomain, $epName) }
     Add-Member -InputObject $conf -NotePropertyName $epName -NotePropertyValue $tpConf
-    $conf | ConvertTo-Json | Out-File -FilePath ("{0}conf.json" -f $sourceDirectoryPath)
+    $conf | ConvertTo-Json | Out-File -FilePath $configurationFilePath
     Write-Host ("{0} updated" -f $configurationFilePath)
 }
 
