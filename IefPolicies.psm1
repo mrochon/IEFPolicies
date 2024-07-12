@@ -1302,6 +1302,9 @@ function Add-IEFPoliciesIdP {
     .PARAMETER federationsPolicyFile
     Xml policy file where the new technical profile will be created (defaults: TrustExtensionsFramework.xml)
    
+    .PARAMETER withHRD
+    Uses TechnicalProfiles for AAD Multitenant, SAML and OIDC Idps that include built-in HRD support
+   
     #>
     [CmdletBinding()]
     param(
@@ -1318,7 +1321,9 @@ function Add-IEFPoliciesIdP {
         [string]$federationsPolicyFile = 'TrustFrameworkExtensions.xml',
 
         [ValidateNotNullOrEmpty()]
-        [string]$updatedSourceDirectory = '.\federations\'
+        [string]$updatedSourceDirectory = '.\federations\',
+
+        [bool]$withHRD = $false
     )
     Write-Debug ("Protocol: {0}, name: {1}" -f $protocol, $name)
     if ($updatedSourceDirectory) {
@@ -1467,7 +1472,11 @@ function Add-IEFPoliciesIdP {
                 }
             } 
             if("AAD" -eq $protocol) {
-                $str = Get-Content "$PSScriptRoot\strings\aadmulti.xml"
+                if($withHRD) {
+                    $str = Get-Content "$PSScriptRoot\strings\aadmultiHRD.xml"
+                } else {
+                    $str = Get-Content "$PSScriptRoot\strings\aadmulti.xml"
+                }
             } else {
                 $str = Get-Content "$PSScriptRoot\strings\MSA.xml"
             }
@@ -1475,14 +1484,22 @@ function Add-IEFPoliciesIdP {
             $tpConf = @{ clientId = $aadCommon.appId } # no other properties are replaced
         }        
         "OIDC" {
-            $str = Get-Content "$PSScriptRoot\strings\OIDCtp.xml"
+            if($withHRD) {
+                $str = Get-Content "$PSScriptRoot\strings\OIDCtpHRD.xml"
+            } else {
+                $str = Get-Content "$PSScriptRoot\strings\OIDC.xml"
+            }
             $tpId = ("{0}-OIDC" -f $name)            
             $tpConf.Add("clientId", "<clientId>")
             $tpConf.Add("metadataUrl", "https://op.com/.well-known/openid-configuration")            
             $keyMsg = ("Ensure that the OAuth2 client secret is defined in a Policy Container named: B2C_1A_{0}Secret (key usage: sig)" -f $name)
         }
         "SAML" {
-            $str = Get-Content "$PSScriptRoot\strings\SAMLIdP.xml"
+            if($withHRD) {
+                $str = Get-Content "$PSScriptRoot\strings\SAMLIdPHRD.xml"
+            } else {
+                $str = Get-Content "$PSScriptRoot\strings\SAMLIdP.xml"
+            }            
             $tpId = ("{0}-SAML" -f $name)
             $keyMsg = ("Ensure that the SAML request signing key is defined in a Policy Container named: B2C_1A_{0}SigningCert" -f $name)
             $tpConf.Add("metadataUrl", "https://samlidp.com/.well-known/federationmetadata.xml")    

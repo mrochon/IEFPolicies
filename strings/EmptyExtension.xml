@@ -13,7 +13,4 @@
     <PolicyId>B2C_1A_TrustFrameworkLocalization</PolicyId>
   </BasePolicy>
 
-  <ClaimsProviders>
-  </ClaimsProviders>
-
 </TrustFrameworkPolicy>

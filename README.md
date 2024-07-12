@@ -201,6 +201,7 @@ Parameters:
 | updatedSourceDirectory | N | Directory where any new/updated files will be stored (default: ./federations) |
 | fedeationsPolicyFile | N | File name (may not exist) where new technical profile will be added (default: TrustFrameworkExtensions.xml) |
 | configurationFilePath | N | Variable configuration data file (default: ./conf.json) |
+| withHRD | N | Boolean, if $true IdP TechnicalProfiles for AAD MT, SAML and OIDC will include HRD support (using ClaimTypeOnWhichToEnable) |
 
 ### Connect-IEFPolicies
 
