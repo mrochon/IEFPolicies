@@ -19,6 +19,7 @@ This module can be installed from the [PowerShell Gallery](https://www.powershel
 
 | Name  | Description  |
 |---|---|
+| 3.1.20 | Added option to include HRD-related artifacts in AAD MT, SAML and OIDCV IdP definitions |
 | 3.1.19 | Fixed: invalid redirectUri was generated if mix-case characters were used in b2C name in connect-iefpolicies |
 | 3.1.16 | Added [ConvertTo-IEFPolicies](https://github.com/mrochon/IEFPolicies#convertto-iefpolicies) cmdlet |
 |   |    | Displaying full policy name on upload (with prefix) |
