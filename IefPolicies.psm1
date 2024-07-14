@@ -1304,6 +1304,9 @@ function Add-IEFPoliciesIdP {
    
     .PARAMETER withHRD
     Uses TechnicalProfiles for AAD Multitenant, SAML and OIDC Idps that include built-in HRD support
+
+    .PARAMETER configurationFilePath
+    Json file with configuration data. <b2cname>.json if connected or conf.json will be used by default.
    
     #>
     [CmdletBinding()]
@@ -1323,7 +1326,10 @@ function Add-IEFPoliciesIdP {
         [ValidateNotNullOrEmpty()]
         [string]$updatedSourceDirectory = '.\federations\',
 
-        [bool]$withHRD = $false
+        [bool]$withHRD = $false,
+
+        [ValidateNotNullOrEmpty()]
+        [string]$configurationFilePath  
     )
     Write-Debug ("Protocol: {0}, name: {1}" -f $protocol, $name)
     if ($updatedSourceDirectory) {
@@ -1337,12 +1343,14 @@ function Add-IEFPoliciesIdP {
         }
     }
 
-    if([string]::IsNullOrEmpty($script:b2cName)){
-        $configurationFilePath = ("{0}{1}" -f $sourceDirectoryPath, "conf.json")
-    } else {
-        $configurationFilePath = ("{0}{1}.json" -f $sourceDirectoryPath, $script:b2cName)    
-        if(-not(Test-Path $configurationFilePath)){
+    if([string]::IsNullOrEmpty($configurationFilePath)) {
+        if([string]::IsNullOrEmpty($script:b2cName)){
             $configurationFilePath = ("{0}{1}" -f $sourceDirectoryPath, "conf.json")
+        } else {
+            $configurationFilePath = ("{0}{1}.json" -f $sourceDirectoryPath, $script:b2cName)    
+            if(-not(Test-Path $configurationFilePath)){
+                $configurationFilePath = ("{0}{1}" -f $sourceDirectoryPath, "conf.json")
+            }
         }
     }
 
@@ -1427,7 +1435,7 @@ function Add-IEFPoliciesIdP {
     }
 
     # add technical profile
-    $tpConf = @{ domainName = ("{0}.com" -f $name); displayName = ("{0} employees/users" -f $name) }
+    $tpConf = @{ domainName = ("{0}.com" -f $name.ToLower()); displayName = ("{0} employees/users" -f $name) }
     $name = $name.ToUpper()
     switch($protocol) {
         #"AAD" { # AAD, multi-tenant
