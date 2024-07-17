@@ -19,7 +19,7 @@ This module can be installed from the [PowerShell Gallery](https://www.powershel
 
 | Name  | Description  |
 |---|---|
-| 3.1.20 | Added option to include HRD-related artifacts in AAD MT, SAML and OIDCV IdP definitions; using tolower for domain name; added configurationFilePath to add IdP |
+| 3.1.20 | Added option to include HRD-related artifacts in AAD MT, SAML and OIDC IdP definitions; using tolower for domain name; added configurationFilePath to add IdP |
 | 3.1.19 | Fixed: invalid redirectUri was generated if mix-case characters were used in b2C name in connect-iefpolicies |
 | 3.1.16 | Added [ConvertTo-IEFPolicies](https://github.com/mrochon/IEFPolicies#convertto-iefpolicies) cmdlet |
 |   |    | Displaying full policy name on upload (with prefix) |
@@ -202,7 +202,7 @@ Parameters:
 | updatedSourceDirectory | N | Directory where any new/updated files will be stored (default: ./federations) |
 | fedeationsPolicyFile | N | File name (may not exist) where new technical profile will be added (default: TrustFrameworkExtensions.xml) |
 | configurationFilePath | N | Variable configuration data file (default: ./conf.json) |
-| withHRD | N | Boolean, if $true IdP TechnicalProfiles for AAD MT, SAML and OIDC will include HRD support (using ClaimTypeOnWhichToEnable) |
+| withHRD | N | Switch, if set the IdP TechnicalProfiles for AAD MT, SAML and OIDC will include HRD support (using ClaimTypeOnWhichToEnable) |
 
 ### Connect-IEFPolicies
 

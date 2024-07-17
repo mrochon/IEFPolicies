@@ -1326,7 +1326,7 @@ function Add-IEFPoliciesIdP {
         [ValidateNotNullOrEmpty()]
         [string]$updatedSourceDirectory = '.\federations\',
 
-        [bool]$withHRD = $false,
+        [switch]$withHRD,
 
         [ValidateNotNullOrEmpty()]
         [string]$configurationFilePath  
@@ -1495,7 +1495,7 @@ function Add-IEFPoliciesIdP {
             if($withHRD) {
                 $str = Get-Content "$PSScriptRoot\strings\OIDCtpHRD.xml"
             } else {
-                $str = Get-Content "$PSScriptRoot\strings\OIDC.xml"
+                $str = Get-Content "$PSScriptRoot\strings\OIDCtp.xml"
             }
             $tpId = ("{0}-OIDC" -f $name)            
             $tpConf.Add("clientId", "<clientId>")
