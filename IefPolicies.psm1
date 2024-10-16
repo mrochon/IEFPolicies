@@ -1201,8 +1201,13 @@ function New-IEFPoliciesKey {
         $keySetId = $keyset.id        
         Write-Host ("Created keyset {0}" -f $keySetid)              
     }
+    if($startValidityInMonths -eq 0) {
+        # Change default nbf time for keys #63
+        $nbf = [int][math]::Round((New-TimeSpan -Start (Get-Date "01/01/1970") -End ([DateTime]::UtcNow).AddMinutes(182)).TotalSeconds)
+    } else {
+        $nbf = [math]::Round((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date).AddMonths($startValidityInMonths)).TotalSeconds)
+    }
     $exp = [math]::Round((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date).AddMonths($startValidityInMonths+$validityInMonths)).TotalSeconds)
-    $nbf = [math]::Round((New-TimeSpan -Start (Get-Date "01/01/1970") -End (Get-Date).AddMonths($startValidityInMonths)).TotalSeconds)
 
     # Issue: https://github.com/mrochon/IEFPolicies/issues/22
     if([string]::IsNullOrEmpty($value)) {
