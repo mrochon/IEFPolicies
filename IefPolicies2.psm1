@@ -398,8 +398,9 @@ function Connect-IEFPolicies {
             throw
         }
     } else {
+        $publicClientId = "e8e12362-9a52-44e7-90b9-9d3133a1184a"
         $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/devicecode" -f $script:tenantName
-        $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&scope=User.Read Directory.AccessAsUser.All Policy.ReadWrite.TrustFramework TrustFrameworkKeySet.ReadWrite.All offline_access"
+        $body = "client_id=$publicClientId&scope=User.Read Directory.AccessAsUser.All Policy.ReadWrite.TrustFramework TrustFrameworkKeySet.ReadWrite.All offline_access"
         try {
             $resp = Invoke-WebRequest -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body
         } catch {
@@ -418,7 +419,7 @@ function Connect-IEFPolicies {
         }
 
         $uri = "https://login.microsoftonline.com/{0}/oauth2/v2.0/token" -f $script:tenantName
-        $body = "client_id=5ca00daf-7851-4276-b857-6b3de7b83f72&client_info=1&scope=user.read+offline_access&grant_type=device_code&device_code={0}" -f $codeResp.device_code
+        $body = "client_id=$publicClientId&client_info=1&scope=user.read+offline_access&grant_type=device_code&device_code={0}" -f $codeResp.device_code
         for($iter = 1; $iter -le ($codeResp.expires_in / $codeResp.interval); $iter++) {
             Start-Sleep -Seconds $codeResp.interval
             $resp = Invoke-RestMethod -UseBasicParsing  -Method 'POST' -Uri $uri -Headers $hdrs -Body $body -SkipHttpErrorCheck -StatusCodeVariable statusCode

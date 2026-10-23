@@ -15,6 +15,10 @@ configuration file used by the import cmdlet. Supports either interactive or un-
 
 This module can be installed from the [PowerShell Gallery](https://www.powershellgallery.com/packages/IefPolicies/)
 
+```PowerShell
+Install-Module IEFPolicies2 -AllowPrerelease -AllowClobber
+```
+
 ### Change log
 
 | Name  | Description  |

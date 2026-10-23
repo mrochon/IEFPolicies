@@ -1,10 +1,10 @@
 @{
 
 # Script module or binary module file associated with this manifest.
-RootModule = 'IefPolicies.psm1'
+RootModule = 'IefPolicies2.psm1'
 
 # Version number of this module.
-ModuleVersion = '3.1.21'
+ModuleVersion = '3.1.22'
 
 PowerShellVersion = '7.0'
 
@@ -12,7 +12,7 @@ PowerShellVersion = '7.0'
 # CompatiblePSEditions = @()
 
 # ID used to uniquely identify this module
-GUID = '037d0382-a043-46a7-b420-a8eae3f4734b'
+GUID = 'f983ec4f-0a84-4063-b86c-f0217720efee'
 
 # Author of this module
 Author = 'Marius Rochon'
@@ -52,7 +52,7 @@ FunctionsToExport = @(
 PrivateData = @{
 
     PSData = @{
-        #Prerelease = 'alpha'
+        Prerelease = 'preview1'
 
         # Tags applied to this module. These help with module discovery in online galleries.
         # Tags = @()
