@@ -23,6 +23,7 @@ Install-Module IEFPolicies2 -AllowPrerelease -AllowClobber
 
 | Name  | Description  |
 |---|---|
+| 3.1.22 | Changed client id for interactive signin. Prvious one was from a now deleted tenant |
 | 3.1.20 | Added option to include HRD-related artifacts in AAD MT, SAML and OIDC IdP definitions; using tolower for domain name; added configurationFilePath to add IdP |
 | 3.1.19 | Fixed: invalid redirectUri was generated if mix-case characters were used in b2C name in connect-iefpolicies |
 | 3.1.16 | Added [ConvertTo-IEFPolicies](https://github.com/mrochon/IEFPolicies#convertto-iefpolicies) cmdlet |
